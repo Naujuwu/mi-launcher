@@ -167,7 +167,7 @@ class HomeView(private val act: Activity) : View(act) {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif", Typeface.BOLD)
-        textSize = iconSize * 0.34f * 0.62f
+        textSize = iconSize * 0.40f * 0.62f
     }
     private val badgeRect = RectF()
 
@@ -559,11 +559,20 @@ class HomeView(private val act: Activity) : View(act) {
         val count = NotifService.counts[pkg] ?: return
         if (count <= 0) return
         val label = if (count > 999) "999+" else count.toString()
-        val h = iconSize * 0.34f
+        val h = iconSize * 0.40f
         val tw = badgeText.measureText(label)
         val w = max(h, tw + h * 0.62f)
-        val right = iconLeft + iconSize + iconSize * 0.06f
-        badgeRect.set(right - w, iconTop - h / 2f, right, iconTop + h / 2f)
+        // el centro queda casi sobre la esquina del icono; crece hacia los lados
+        val cx = iconLeft + iconSize - iconSize * 0.02f
+        val cy = iconTop + iconSize * 0.06f
+        var left = cx - w / 2f
+        var right = cx + w / 2f
+        val maxRight = width - dp(3f)
+        if (right > maxRight) {
+            left -= right - maxRight
+            right = maxRight
+        }
+        badgeRect.set(left, cy - h / 2f, right, cy + h / 2f)
         c.drawRoundRect(badgeRect, h / 2f, h / 2f, badgePaint)
         val fm = badgeText.fontMetrics
         val baseline = badgeRect.centerY() - (fm.ascent + fm.descent) / 2f
