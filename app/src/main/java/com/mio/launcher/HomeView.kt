@@ -12,6 +12,10 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.RenderEffect
+import android.graphics.RenderNode
+import android.os.Build
+import android.view.WindowManager
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Handler
@@ -135,7 +139,7 @@ class HomeView(private val act: Activity) : View(act) {
 
     private val folderTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = dp(27f)
+        textSize = dp(30f)
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif", Typeface.NORMAL)
         setShadowLayer(dp(8f), 0f, dp(3f), 0x66000000)
@@ -143,18 +147,18 @@ class HomeView(private val act: Activity) : View(act) {
 
     private val folderLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = dp(14f)
+        textSize = dp(11.5f)
         textAlign = Paint.Align.CENTER
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        setShadowLayer(dp(5f), 0f, dp(2f), 0x99000000.toInt())
+        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        setShadowLayer(dp(3f), 0f, dp(1f), 0x55000000)
     }
 
     private val folderPanelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private val folderPanelBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x99FFFFFF.toInt()
+        color = 0x59FFFFFF
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.2f)
+        strokeWidth = dp(1f)
     }
 
     private val folderIconBgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -166,7 +170,7 @@ class HomeView(private val act: Activity) : View(act) {
     }
 
     private val folderOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x26000000
+        color = 0x59000000
     }
 
     private val folderDotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -175,7 +179,7 @@ class HomeView(private val act: Activity) : View(act) {
         Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
     private val folderHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x22FFFFFF
+        color = 0x14FFFFFF
     }
 
     private var folderDownX = 0f
@@ -457,7 +461,36 @@ class HomeView(private val act: Activity) : View(act) {
 
     // Dibujo principal
 
+    private var bgNode: RenderNode? = null
+
     override fun onDraw(canvas: Canvas) {
+        val folderOpen = openFolderId != null
+
+        if (folderOpen &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            canvas.isHardwareAccelerated
+        ) {
+            val node = bgNode ?: RenderNode("homeBlur").also { bgNode = it }
+            node.setPosition(0, 0, width, height)
+            node.setRenderEffect(
+                RenderEffect.createBlurEffect(
+                    dp(26f), dp(26f), Shader.TileMode.CLAMP
+                )
+            )
+            val rc = node.beginRecording()
+            drawHome(rc)
+            node.endRecording()
+            canvas.drawRenderNode(node)
+        } else {
+            drawHome(canvas)
+        }
+
+        if (folderOpen) {
+            drawOpenFolder(canvas)
+        }
+    }
+
+    private fun drawHome(canvas: Canvas) {
         for (p in (currentPage - 1)..(currentPage + 1)) {
             if (p < 0 || p >= store.pages.size) continue
 
@@ -471,10 +504,6 @@ class HomeView(private val act: Activity) : View(act) {
         drawPill(canvas)
         drawDock(canvas)
         drawDragged(canvas)
-
-        if (openFolderId != null) {
-            drawOpenFolder(canvas)
-        }
     }
 
     private fun fit(label: String, maxW: Float): String {
@@ -661,12 +690,31 @@ class HomeView(private val act: Activity) : View(act) {
 
     // Geometría del panel abierto
 
+    private fun folderCount(): Int =
+        openFolderId?.let { store.folders[it]?.apps?.size } ?: 0
+
+    private fun folderRows(): Int =
+        (min(9, max(folderCount(), 1)) + 2) / 3
+
+    private fun folderHasDots(): Boolean = folderCount() > 9
+
+    private fun folderIconSize(): Float = folderPanel.width() / 3f * 0.60f
+
+    private fun folderCellH(): Float = folderIconSize() + dp(34f)
+
+    private fun folderGridTop(): Float = folderPanel.top + dp(18f)
+
+    private fun folderGridBottom(): Float =
+        folderGridTop() + folderRows() * folderCellH()
+
     private fun folderPanelGeometry() {
-        val panelW = min(width * 0.84f, dp(420f))
-        val panelH = min(height * 0.55f, dp(590f))
+        val panelW = min(width * 0.78f, dp(400f))
+        val cellH = panelW / 3f * 0.60f + dp(34f)
+        val panelH = dp(18f) + folderRows() * cellH + dp(12f) +
+            (if (folderHasDots()) dp(22f) else 0f)
 
         val left = (width - panelW) / 2f
-        val top = (height - panelH) / 2f + dp(24f)
+        val top = (height - panelH) / 2f + dp(10f)
 
         folderPanel.set(
             left,
@@ -700,9 +748,9 @@ class HomeView(private val act: Activity) : View(act) {
             folderPanel.right,
             folderPanel.bottom,
             intArrayOf(
-                0xA9F4FFFF.toInt(),
-                0x96DCEBFF.toInt(),
-                0xA6C9E8F8.toInt()
+                0x5CFFFFFF,
+                0x45FFFFFF,
+                0x52FFFFFF
             ),
             null,
             Shader.TileMode.CLAMP
@@ -721,7 +769,7 @@ class HomeView(private val act: Activity) : View(act) {
             folderPanel.left + dp(2f),
             folderPanel.top + dp(2f),
             folderPanel.right - dp(2f),
-            folderPanel.top + dp(85f)
+            folderPanel.top + dp(60f)
         )
 
         c.drawRoundRect(
@@ -743,20 +791,16 @@ class HomeView(private val act: Activity) : View(act) {
         c.drawText(
             folder.name,
             width / 2f,
-            folderPanel.top - dp(48f),
+            folderPanel.top - dp(34f),
             folderTitlePaint
         )
 
-        val gridTop = folderPanel.top + dp(65f)
-        val gridBottom = folderPanel.bottom - dp(42f)
+        val gridTop = folderGridTop()
 
         val cellW = folderPanel.width() / 3f
-        val cellH = (gridBottom - gridTop) / 3f
+        val cellH = folderCellH()
 
-        val icon = min(
-            cellW * 0.66f,
-            cellH * 0.65f
-        )
+        val icon = folderIconSize()
 
         c.save()
         c.clipRect(folderPanel)
@@ -784,10 +828,9 @@ class HomeView(private val act: Activity) : View(act) {
                 val row = i / 3
 
                 val cx = folderPanel.left + (col + 0.5f) * cellW
-                val cy = gridTop + (row + 0.5f) * cellH
 
                 val left = cx - icon / 2f
-                val top = cy - icon / 2f - dp(7f)
+                val top = gridTop + row * cellH + dp(4f)
 
                 c.drawBitmap(
                     app.icon,
@@ -809,7 +852,7 @@ class HomeView(private val act: Activity) : View(act) {
                         cellW - dp(8f)
                     ),
                     cx,
-                    top + icon + dp(24f),
+                    top + icon + dp(17f),
                     folderLabelPaint
                 )
             }
@@ -835,7 +878,7 @@ class HomeView(private val act: Activity) : View(act) {
 
                 c.drawCircle(
                     startX + i * dotGap,
-                    folderPanel.bottom - dp(21f),
+                    folderPanel.bottom - dp(14f),
                     dp(3.5f),
                     folderDotPaint
                 )
@@ -871,8 +914,8 @@ class HomeView(private val act: Activity) : View(act) {
 
         if (!folderPanel.contains(x, y)) return -1
 
-        val gridTop = folderPanel.top + dp(66f)
-        val gridBottom = folderPanel.bottom - dp(43f)
+        val gridTop = folderGridTop()
+        val gridBottom = folderGridBottom()
 
         if (y < gridTop || y >= gridBottom) return -1
 
@@ -880,9 +923,9 @@ class HomeView(private val act: Activity) : View(act) {
             (folderPanel.width() / 3f)).toInt()
 
         val row = ((y - gridTop) /
-            ((gridBottom - gridTop) / 3f)).toInt()
+            folderCellH()).toInt()
 
-        if (col !in 0..2 || row !in 0..2) return -1
+        if (col !in 0..2 || row !in 0 until folderRows()) return -1
 
         val index = folderPage * 9 + row * 3 + col
 
@@ -901,6 +944,7 @@ class HomeView(private val act: Activity) : View(act) {
         folderPageOffset = 0f
         mode = MODE_NONE
 
+        setWindowBlur(true)
         invalidate()
     }
 
@@ -912,7 +956,30 @@ class HomeView(private val act: Activity) : View(act) {
         folderPageOffset = 0f
         mode = MODE_NONE
 
+        setWindowBlur(false)
         invalidate()
+    }
+
+    // Desenfoca el fondo de pantalla detrás de la ventana (Android 12+)
+    private fun setWindowBlur(on: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+
+        try {
+            val w = act.window
+            val lp = w.attributes
+
+            if (on) {
+                lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
+                lp.blurBehindRadius = dp(30f).toInt()
+            } else {
+                lp.flags = lp.flags and
+                    WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()
+                lp.blurBehindRadius = 0
+            }
+
+            w.attributes = lp
+        } catch (_: Throwable) {
+        }
     }
 
     private fun showRenameFolderDialog(folderId: String) {
