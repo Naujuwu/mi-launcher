@@ -192,11 +192,6 @@ class HomeView(private val act: Activity) : View(act) {
     private var dotsAnimator: ValueAnimator? = null
     private val hideDots = Runnable { animateDots(0f) }
 
-    // globos de la cuadrícula: se ocultan mientras las páginas se mueven
-    private var badgeMix = 1f
-    private var badgeTarget = 1f
-    private var badgeAnimator: ValueAnimator? = null
-
     // ---- estado ----
     private var currentPage = 0
     private var pageOffset = 0f
@@ -489,7 +484,7 @@ class HomeView(private val act: Activity) : View(act) {
             val cx = offX + gridLeft + (col + 0.5f) * cellW
             val top = gridTop + row * cellH + (cellH - iconSize - dp(18f)) / 2f
             c.drawBitmap(app.icon, cx - iconSize / 2f, top, iconPaint)
-            drawBadge(c, pkg, cx - iconSize / 2f, top, badgeMix)
+            drawBadge(c, pkg, cx - iconSize / 2f, top)
             val shown = app.shown ?: fit(app.label, iconSize).also { app.shown = it }
             c.drawText(shown, cx, top + iconSize + dp(15f), labelPaint)
         }
@@ -554,14 +549,13 @@ class HomeView(private val act: Activity) : View(act) {
             val app = apps[pkg] ?: continue
             val cx = dockLeft + (i + 0.5f) * dockPitch
             c.drawBitmap(app.icon, cx - iconSize / 2f, dockRect.centerY() - iconSize / 2f, iconPaint)
-            drawBadge(c, pkg, cx - iconSize / 2f, dockRect.centerY() - iconSize / 2f, 1f)
+            drawBadge(c, pkg, cx - iconSize / 2f, dockRect.centerY() - iconSize / 2f)
         }
     }
 
     // Globo rojo de notificaciones, estilo iOS 26: crece según los dígitos
-    private fun drawBadge(c: Canvas, pkg: String, iconLeft: Float, iconTop: Float, alpha: Float) {
+    private fun drawBadge(c: Canvas, pkg: String, iconLeft: Float, iconTop: Float) {
         if (NotifService.dnd) return                       // No molestar: ocultos
-        if (alpha <= 0.01f) return
         val count = NotifService.counts[pkg] ?: return
         if (count <= 0) return
         val label = if (count > 999) "999+" else count.toString()
@@ -571,16 +565,7 @@ class HomeView(private val act: Activity) : View(act) {
         // el centro queda casi sobre la esquina del icono; crece hacia los lados
         val cx = iconLeft + iconSize - iconSize * 0.02f
         val cy = iconTop + iconSize * 0.06f
-        var left = cx - w / 2f
-        var right = cx + w / 2f
-        val maxRight = width - dp(3f)
-        if (right > maxRight) {
-            left -= right - maxRight
-            right = maxRight
-        }
-        badgeRect.set(left, cy - h / 2f, right, cy + h / 2f)
-        badgePaint.alpha = (255f * alpha).toInt()
-        badgeText.alpha = (255f * alpha).toInt()
+        badgeRect.set(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
         c.drawRoundRect(badgeRect, h / 2f, h / 2f, badgePaint)
         val fm = badgeText.fontMetrics
         val baseline = badgeRect.centerY() - (fm.ascent + fm.descent) / 2f
@@ -630,10 +615,7 @@ class HomeView(private val act: Activity) : View(act) {
                         if (abs(dx) > touchSlop || abs(dy) > touchSlop) {
                             ui.removeCallbacks(longPress)
                             mode = if (abs(dx) > abs(dy)) MODE_SWIPE else MODE_NONE
-                            if (mode == MODE_SWIPE) {
-                                showDots()
-                                hideBadges()
-                            }
+                            if (mode == MODE_SWIPE) showDots()
                         }
                     }
                     MODE_SWIPE -> {
@@ -741,24 +723,6 @@ class HomeView(private val act: Activity) : View(act) {
         src[srcIndex] = displaced
     }
 
-    private fun hideBadges() {
-        if (pages.size > 1) animateBadges(0f)
-    }
-
-    private fun animateBadges(target: Float) {
-        if (badgeTarget == target) return
-        badgeTarget = target
-        badgeAnimator?.cancel()
-        val a = ValueAnimator.ofFloat(badgeMix, target)
-        a.duration = if (target < badgeMix) 120L else 220L
-        a.addUpdateListener {
-            badgeMix = it.animatedValue as Float
-            invalidate()
-        }
-        badgeAnimator = a
-        a.start()
-    }
-
     private fun showDots() {
         if (pages.size <= 1) return
         ui.removeCallbacks(hideDots)
@@ -791,7 +755,6 @@ class HomeView(private val act: Activity) : View(act) {
     private fun animateToPage(target: Int) {
         pageAnimator?.cancel()
         showDots()
-        hideBadges()
         val from = pageOffset
         val to = when {
             target > currentPage -> -width.toFloat()
@@ -809,7 +772,6 @@ class HomeView(private val act: Activity) : View(act) {
                 currentPage = target
                 pageOffset = 0f
                 scheduleHideDots()
-                animateBadges(1f)
                 invalidate()
             }
         })
