@@ -1,3 +1,4 @@
+
 package com.mio.launcher
 
 import android.animation.Animator
@@ -161,7 +162,7 @@ class HomeView(private val act: Activity) : View(act) {
     }
 
     private val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFFF383C.toInt()   // rojo de iOS 26
+        color = 0xFFFF383C.toInt()
     }
     private val badgeText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -241,7 +242,7 @@ class HomeView(private val act: Activity) : View(act) {
         super.onDetachedFromWindow()
     }
 
-    // =====================  API pública  =====================
+    // ===================== API pública =====================
 
     fun setInsets(top: Int, bottom: Int) {
         topInset = max(top.toFloat(), dp(24f))
@@ -276,7 +277,7 @@ class HomeView(private val act: Activity) : View(act) {
         computeGeometry()
     }
 
-    // =====================  iconos y layout guardado  =====================
+    // ===================== iconos y layout guardado =====================
 
     private fun roundedIcon(d: Drawable): Bitmap {
         val raw = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
@@ -390,7 +391,7 @@ class HomeView(private val act: Activity) : View(act) {
         prefs.edit().putString("pages", p).putString("dock", d).apply()
     }
 
-    // =====================  geometría  =====================
+    // ===================== geometría =====================
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -402,7 +403,6 @@ class HomeView(private val act: Activity) : View(act) {
         val h = height.toFloat()
         if (w == 0f || h == 0f) return
 
-        // dock: iconos del mismo tamaño que la cuadrícula, como iOS
         val dockH = iconSize + dp(34f)
         val dockSide = w * 0.032f
         val dockBottom = h - bottomInset - dp(10f)
@@ -414,11 +414,9 @@ class HomeView(private val act: Activity) : View(act) {
         dockPitch = w * 0.2205f
         dockLeft = w / 2f - 2f * dockPitch
 
-        // burbuja de búsqueda / puntos
         pillH = dp(32f)
         pillTop = dockRect.top - dp(16f) - pillH
 
-        // cuadrícula 4x6 con las proporciones de iOS
         cellW = w * 0.231f
         gridLeft = (w - cellW * cols) / 2f
         val availTop = topInset + dp(8f)
@@ -452,7 +450,7 @@ class HomeView(private val act: Activity) : View(act) {
         return if (inDock) dock[idx] else pages.getOrNull(page)?.get(idx)
     }
 
-    // =====================  dibujo  =====================
+    // ===================== dibujo =====================
 
     override fun onDraw(canvas: Canvas) {
         for (p in (currentPage - 1)..(currentPage + 1)) {
@@ -509,7 +507,6 @@ class HomeView(private val act: Activity) : View(act) {
         glassPaint.color = 0x44FFFFFF
         c.drawRoundRect(pillRect, pillH / 2f, pillH / 2f, glassPaint)
 
-        // "Search" (se desvanece cuando aparecen los puntos)
         val sa = ((1f - dotsMix) * 255f).toInt()
         if (sa > 0) {
             searchText.alpha = sa
@@ -523,7 +520,6 @@ class HomeView(private val act: Activity) : View(act) {
             c.drawText(label, startX + iconW + gap, cy + dp(5f), searchText)
         }
 
-        // puntos de página (aparecen al deslizar)
         if (dotsMix > 0.01f && n > 1) {
             val x0 = cx - ((n - 1) * dotGap) / 2f
             val active = Math.round(currentPage - pageOffset / width)
@@ -553,20 +549,25 @@ class HomeView(private val act: Activity) : View(act) {
         }
     }
 
-    // Globo rojo de notificaciones, estilo iOS 26: crece según los dígitos
+    // Globo rojo de notificaciones
     private fun drawBadge(c: Canvas, pkg: String, iconLeft: Float, iconTop: Float) {
-        if (NotifService.dnd) return                       // No molestar: ocultos
+        if (NotifService.dnd) return
         val count = NotifService.counts[pkg] ?: return
         if (count <= 0) return
+
         val label = if (count > 999) "999+" else count.toString()
         val h = iconSize * 0.40f
         val tw = badgeText.measureText(label)
         val w = max(h, tw + h * 0.62f)
-        // el centro queda casi sobre la esquina del icono; crece hacia los lados
-        val cx = iconLeft + iconSize - iconSize * 0.02f
+
+        // Desplazar los contadores de dos o más dígitos hacia la izquierda.
+        val multiDigitOffset = if (label.length >= 2) h * 0.20f else 0f
+        val cx = iconLeft + iconSize - iconSize * 0.02f - multiDigitOffset
         val cy = iconTop + iconSize * 0.06f
+
         badgeRect.set(cx - w / 2f, cy - h / 2f, cx + w / 2f, cy + h / 2f)
         c.drawRoundRect(badgeRect, h / 2f, h / 2f, badgePaint)
+
         val fm = badgeText.fontMetrics
         val baseline = badgeRect.centerY() - (fm.ascent + fm.descent) / 2f
         c.drawText(label, badgeRect.centerX(), baseline, badgeText)
@@ -583,7 +584,7 @@ class HomeView(private val act: Activity) : View(act) {
         c.restore()
     }
 
-    // =====================  táctil  =====================
+    // ===================== táctil =====================
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         when (e.actionMasked) {
@@ -780,7 +781,6 @@ class HomeView(private val act: Activity) : View(act) {
     }
 }
 
-
 class NotifService : NotificationListenerService() {
 
     companion object {
@@ -815,23 +815,30 @@ class NotifService : NotificationListenerService() {
 
     private fun refresh() {
         val map = HashMap<String, Int>()
+
         try {
             val list = activeNotifications ?: emptyArray()
+
             for (sbn in list) {
                 val flags = sbn.notification.flags
+
+                // Ignorar únicamente los resúmenes de grupos.
+                // Las notificaciones permanentes también se cuentan.
                 if ((flags and Notification.FLAG_GROUP_SUMMARY) != 0) continue
-                if ((flags and Notification.FLAG_ONGOING_EVENT) != 0) continue
-                if (!sbn.isClearable) continue
+
                 map[sbn.packageName] = (map[sbn.packageName] ?: 0) + 1
             }
         } catch (e: Exception) {
             // el sistema aún no nos conectó
         }
+
         counts = map
+
         val f = currentInterruptionFilter
         dnd = f == INTERRUPTION_FILTER_PRIORITY ||
             f == INTERRUPTION_FILTER_NONE ||
             f == INTERRUPTION_FILTER_ALARMS
+
         onChanged?.invoke()
     }
 }
