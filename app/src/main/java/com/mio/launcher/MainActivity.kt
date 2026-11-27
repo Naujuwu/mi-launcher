@@ -27,6 +27,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import kotlin.math.abs
+import kotlin.math.max
 
 private const val MODE_NONE = 0
 private const val MODE_PRESS = 1
@@ -87,7 +88,7 @@ class HomeView(private val act: Activity) : View(act) {
 
     private fun dp(v: Float) = v * resources.displayMetrics.density
 
-    private val iconPx = dp(58f).toInt()
+    private val iconPx = (resources.displayMetrics.widthPixels * 0.16f).toInt()
     private val iconSize = iconPx.toFloat()
 
     // ---- pinceles ----
@@ -96,6 +97,7 @@ class HomeView(private val act: Activity) : View(act) {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
         textSize = dp(11.5f)
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         setShadowLayer(dp(3f), 0f, dp(1f), 0xAA000000.toInt())
     }
     private val glassPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -107,8 +109,8 @@ class HomeView(private val act: Activity) : View(act) {
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val searchText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = dp(15f)
-        typeface = Typeface.DEFAULT_BOLD
+        textSize = dp(14f)
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
     }
     private val magPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -121,12 +123,22 @@ class HomeView(private val act: Activity) : View(act) {
     private var topInset = dp(32f)
     private var bottomInset = dp(16f)
     private var gridTop = 0f
+    private var gridLeft = 0f
     private var cellW = 0f
     private var cellH = 0f
-    private var dotsY = 0f
+    private var dockLeft = 0f
+    private var dockPitch = 0f
+    private var pillTop = 0f
+    private var pillH = 0f
     private val dockRect = RectF()
     private val pillRect = RectF()
     private var dockShader: Shader? = null
+
+    // burbuja: 0 = "Search", 1 = puntos de página
+    private var dotsMix = 0f
+    private var dotsTarget = 0f
+    private var dotsAnimator: ValueAnimator? = null
+    private val hideDots = Runnable { animateDots(0f) }
 
     // ---- estado ----
     private var currentPage = 0
@@ -170,7 +182,7 @@ class HomeView(private val act: Activity) : View(act) {
     // =====================  API pública  =====================
 
     fun setInsets(top: Int, bottom: Int) {
-        topInset = top.toFloat()
+        topInset = max(top.toFloat(), dp(24f))
         bottomInset = bottom.toFloat()
         computeGeometry()
     }
@@ -328,25 +340,30 @@ class HomeView(private val act: Activity) : View(act) {
         val h = height.toFloat()
         if (w == 0f || h == 0f) return
 
-        val dockH = dp(92f)
-        val dockSide = dp(14f)
+        // dock: iconos del mismo tamaño que la cuadrícula, como iOS
+        val dockH = iconSize + dp(34f)
+        val dockSide = w * 0.032f
         val dockBottom = h - bottomInset - dp(10f)
         dockRect.set(dockSide, dockBottom - dockH, w - dockSide, dockBottom)
         dockShader = LinearGradient(
             0f, dockRect.top, 0f, dockRect.bottom,
             0x66FFFFFF, 0x40FFFFFF, Shader.TileMode.CLAMP
         )
+        dockPitch = w * 0.2205f
+        dockLeft = w / 2f - 2f * dockPitch
 
-        val pillW = dp(112f)
-        val pillH = dp(36f)
-        val pillBottom = dockRect.top - dp(14f)
-        pillRect.set((w - pillW) / 2f, pillBottom - pillH, (w + pillW) / 2f, pillBottom)
+        // burbuja de búsqueda / puntos
+        pillH = dp(32f)
+        pillTop = dockRect.top - dp(16f) - pillH
 
-        dotsY = pillRect.top - dp(16f)
-        gridTop = topInset + dp(10f)
-        val gridBottom = dotsY - dp(14f)
-        cellW = w / cols
-        cellH = (gridBottom - gridTop) / rows
+        // cuadrícula 4x6 con las proporciones de iOS
+        cellW = w * 0.231f
+        gridLeft = (w - cellW * cols) / 2f
+        val availTop = topInset + dp(8f)
+        val availBottom = pillTop - dp(12f)
+        val avail = availBottom - availTop
+        cellH = minOf(avail / rows, w * 0.252f)
+        gridTop = availTop + (avail - cellH * rows) / 2f
 
         for (a in apps.values) a.shown = null
         invalidate()
@@ -355,7 +372,8 @@ class HomeView(private val act: Activity) : View(act) {
     private fun gridCellAt(x: Float, y: Float): Int {
         if (cellW <= 0f || cellH <= 0f) return -1
         if (y < gridTop || y >= gridTop + cellH * rows) return -1
-        val col = (x / cellW).toInt()
+        if (x < gridLeft || x >= gridLeft + cellW * cols) return -1
+        val col = ((x - gridLeft) / cellW).toInt()
         val row = ((y - gridTop) / cellH).toInt()
         if (col < 0 || col >= cols || row < 0 || row >= rows) return -1
         return row * cols + col
@@ -364,8 +382,7 @@ class HomeView(private val act: Activity) : View(act) {
     private fun dockCellAt(x: Float, y: Float): Int {
         if (x < dockRect.left || x > dockRect.right) return -1
         if (y < dockRect.top - dp(10f) || y > dockRect.bottom + dp(10f)) return -1
-        val i = ((x - dockRect.left) / (dockRect.width() / 4f)).toInt()
-        return i.coerceIn(0, 3)
+        return ((x - dockLeft) / dockPitch).toInt().coerceIn(0, 3)
     }
 
     private fun pkgAt(inDock: Boolean, idx: Int, page: Int): String? {
@@ -382,7 +399,6 @@ class HomeView(private val act: Activity) : View(act) {
             if (offX <= -width || offX >= width) continue
             drawPage(canvas, p, offX)
         }
-        drawDots(canvas)
         drawPill(canvas)
         drawDock(canvas)
         drawDragged(canvas)
@@ -403,62 +419,72 @@ class HomeView(private val act: Activity) : View(act) {
             val app = apps[pkg] ?: continue
             val col = i % cols
             val row = i / cols
-            val cx = offX + (col + 0.5f) * cellW
+            val cx = offX + gridLeft + (col + 0.5f) * cellW
             val top = gridTop + row * cellH + (cellH - iconSize - dp(18f)) / 2f
             c.drawBitmap(app.icon, cx - iconSize / 2f, top, iconPaint)
-            val shown = app.shown ?: fit(app.label, cellW - dp(8f)).also { app.shown = it }
-            c.drawText(shown, cx, top + iconSize + dp(14f), labelPaint)
-        }
-    }
-
-    private fun drawDots(c: Canvas) {
-        val n = pages.size
-        if (n <= 1) return
-        val r = dp(3.2f)
-        val gap = dp(12f)
-        val total = (n - 1) * gap
-        val x0 = (width - total) / 2f
-        val active = Math.round(currentPage - pageOffset / width)
-        for (i in 0 until n) {
-            dotPaint.color = if (i == active) 0xFFFFFFFF.toInt() else 0x66FFFFFF
-            c.drawCircle(x0 + i * gap, dotsY, r, dotPaint)
+            val shown = app.shown ?: fit(app.label, iconSize).also { app.shown = it }
+            c.drawText(shown, cx, top + iconSize + dp(15f), labelPaint)
         }
     }
 
     private fun drawPill(c: Canvas) {
-        glassPaint.shader = null
-        glassPaint.color = 0x44FFFFFF
-        val rad = pillRect.height() / 2f
-        c.drawRoundRect(pillRect, rad, rad, glassPaint)
-
+        val n = pages.size
         val label = "Search"
         val tw = searchText.measureText(label)
-        val iconW = dp(16f)
+        val iconW = dp(15f)
         val gap = dp(6f)
-        val startX = pillRect.centerX() - (iconW + gap + tw) / 2f
-        val cy = pillRect.centerY()
-        val r = dp(5f)
-        val mx = startX + r
-        val my = cy - dp(1f)
-        c.drawCircle(mx, my, r, magPaint)
-        c.drawLine(mx + r * 0.72f, my + r * 0.72f, startX + iconW, cy + dp(5f), magPaint)
-        c.drawText(label, startX + iconW + gap, cy + dp(5f), searchText)
+        val searchW = iconW + gap + tw + dp(30f)
+        val dotGap = dp(11f)
+        val dr = dp(3.3f)
+        val dotsW = max(searchW, (n - 1) * dotGap + 2f * dr + dp(30f))
+        val pw = searchW + (dotsW - searchW) * dotsMix
+        val cx = width / 2f
+        val cy = pillTop + pillH / 2f
+
+        pillRect.set(cx - pw / 2f, pillTop, cx + pw / 2f, pillTop + pillH)
+        glassPaint.shader = null
+        glassPaint.color = 0x44FFFFFF
+        c.drawRoundRect(pillRect, pillH / 2f, pillH / 2f, glassPaint)
+
+        // "Search" (se desvanece cuando aparecen los puntos)
+        val sa = ((1f - dotsMix) * 255f).toInt()
+        if (sa > 0) {
+            searchText.alpha = sa
+            magPaint.alpha = sa
+            val startX = cx - (iconW + gap + tw) / 2f
+            val r = dp(4.6f)
+            val mx = startX + r
+            val my = cy - dp(1f)
+            c.drawCircle(mx, my, r, magPaint)
+            c.drawLine(mx + r * 0.72f, my + r * 0.72f, startX + iconW - dp(1f), cy + dp(5f), magPaint)
+            c.drawText(label, startX + iconW + gap, cy + dp(5f), searchText)
+        }
+
+        // puntos de página (aparecen al deslizar)
+        if (dotsMix > 0.01f && n > 1) {
+            val x0 = cx - ((n - 1) * dotGap) / 2f
+            val active = Math.round(currentPage - pageOffset / width)
+            for (i in 0 until n) {
+                val baseA = if (i == active) 255 else 110
+                dotPaint.color = Color.argb((baseA * dotsMix).toInt(), 255, 255, 255)
+                c.drawCircle(x0 + i * dotGap, cy, dr, dotPaint)
+            }
+        }
     }
 
     private fun drawDock(c: Canvas) {
-        val rad = dp(34f)
+        val rad = dp(38f)
         glassPaint.color = Color.WHITE
         glassPaint.shader = dockShader
         c.drawRoundRect(dockRect, rad, rad, glassPaint)
         glassPaint.shader = null
         c.drawRoundRect(dockRect, rad, rad, borderPaint)
 
-        val cw = dockRect.width() / 4f
         for (i in 0 until 4) {
             val pkg = dock[i] ?: continue
             if (dragPkg != null && srcInDock && srcIndex == i) continue
             val app = apps[pkg] ?: continue
-            val cx = dockRect.left + (i + 0.5f) * cw
+            val cx = dockLeft + (i + 0.5f) * dockPitch
             c.drawBitmap(app.icon, cx - iconSize / 2f, dockRect.centerY() - iconSize / 2f, iconPaint)
         }
     }
@@ -506,6 +532,7 @@ class HomeView(private val act: Activity) : View(act) {
                         if (abs(dx) > touchSlop || abs(dy) > touchSlop) {
                             ui.removeCallbacks(longPress)
                             mode = if (abs(dx) > abs(dy)) MODE_SWIPE else MODE_NONE
+                            if (mode == MODE_SWIPE) showDots()
                         }
                     }
                     MODE_SWIPE -> {
@@ -613,12 +640,38 @@ class HomeView(private val act: Activity) : View(act) {
         src[srcIndex] = displaced
     }
 
+    private fun showDots() {
+        if (pages.size <= 1) return
+        ui.removeCallbacks(hideDots)
+        animateDots(1f)
+    }
+
+    private fun scheduleHideDots() {
+        ui.removeCallbacks(hideDots)
+        ui.postDelayed(hideDots, 800)
+    }
+
+    private fun animateDots(target: Float) {
+        if (dotsTarget == target) return
+        dotsTarget = target
+        dotsAnimator?.cancel()
+        val a = ValueAnimator.ofFloat(dotsMix, target)
+        a.duration = 180
+        a.addUpdateListener {
+            dotsMix = it.animatedValue as Float
+            invalidate()
+        }
+        dotsAnimator = a
+        a.start()
+    }
+
     private fun launch(pkg: String) {
         act.packageManager.getLaunchIntentForPackage(pkg)?.let { act.startActivity(it) }
     }
 
     private fun animateToPage(target: Int) {
         pageAnimator?.cancel()
+        showDots()
         val from = pageOffset
         val to = when {
             target > currentPage -> -width.toFloat()
@@ -635,6 +688,7 @@ class HomeView(private val act: Activity) : View(act) {
             override fun onAnimationEnd(animation: Animator) {
                 currentPage = target
                 pageOffset = 0f
+                scheduleHideDots()
                 invalidate()
             }
         })
