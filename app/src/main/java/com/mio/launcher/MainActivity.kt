@@ -150,16 +150,23 @@ class HomeView(private val act: Activity) : View(act) {
         color = 0x55FFFFFF
     }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    // burbuja de búsqueda: más pequeña, estilo iOS 26
     private val searchText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = dp(14f)
+        textSize = dp(12.5f)                       // antes 14f
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
     }
     private val magPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.8f)
+        strokeWidth = dp(1.5f)                     // antes 1.8f
         strokeCap = Paint.Cap.ROUND
+    }
+    // borde fino con degradado (más brillante arriba), efecto "glass" de iOS 26
+    private val pillBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = dp(0.7f)
     }
 
     private val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -499,9 +506,13 @@ class HomeView(private val act: Activity) : View(act) {
         dockPitch = w * 0.2205f
         dockLeft = w / 2f - 2f * dockPitch
 
-        // burbuja de búsqueda / puntos
-        pillH = dp(32f)
+        // burbuja de búsqueda / puntos (más baja que antes)
+        pillH = dp(26f)                            // antes 32f
         pillTop = dockRect.top - dp(16f) - pillH
+        pillBorder.shader = LinearGradient(
+            0f, pillTop, 0f, pillTop + pillH,
+            0x80FFFFFF.toInt(), 0x1AFFFFFF, Shader.TileMode.CLAMP
+        )
 
         // cuadrícula 4x6 con las proporciones de iOS
         cellW = w * 0.231f
@@ -579,20 +590,26 @@ class HomeView(private val act: Activity) : View(act) {
         val n = pages.size
         val label = "Search"
         val tw = searchText.measureText(label)
-        val iconW = dp(15f)
-        val gap = dp(6f)
-        val searchW = iconW + gap + tw + dp(30f)
-        val dotGap = dp(11f)
-        val dr = dp(3.3f)
-        val dotsW = max(searchW, (n - 1) * dotGap + 2f * dr + dp(30f))
+        val iconW = dp(12f)                        // antes 15f
+        val gap = dp(5f)                           // antes 6f
+        val padH = dp(24f)                         // antes 30f
+        val searchW = iconW + gap + tw + padH
+        val dotGap = dp(10f)
+        val dr = dp(3f)
+        val dotsW = max(searchW, (n - 1) * dotGap + 2f * dr + padH)
         val pw = searchW + (dotsW - searchW) * dotsMix
         val cx = width / 2f
         val cy = pillTop + pillH / 2f
 
         pillRect.set(cx - pw / 2f, pillTop, cx + pw / 2f, pillTop + pillH)
         glassPaint.shader = null
-        glassPaint.color = 0x44FFFFFF
+        glassPaint.color = 0x33FFFFFF
         c.drawRoundRect(pillRect, pillH / 2f, pillH / 2f, glassPaint)
+
+        // borde dentro del contorno para que no se corte
+        val half = pillBorder.strokeWidth / 2f
+        pillRect.inset(half, half)
+        c.drawRoundRect(pillRect, pillRect.height() / 2f, pillRect.height() / 2f, pillBorder)
 
         // "Search" (se desvanece cuando aparecen los puntos)
         val sa = ((1f - dotsMix) * 255f).toInt()
@@ -600,12 +617,17 @@ class HomeView(private val act: Activity) : View(act) {
             searchText.alpha = sa
             magPaint.alpha = sa
             val startX = cx - (iconW + gap + tw) / 2f
-            val r = dp(4.6f)
+            val r = dp(3.8f)
             val mx = startX + r
-            val my = cy - dp(1f)
+            val my = cy - dp(0.8f)
             c.drawCircle(mx, my, r, magPaint)
-            c.drawLine(mx + r * 0.72f, my + r * 0.72f, startX + iconW - dp(1f), cy + dp(5f), magPaint)
-            c.drawText(label, startX + iconW + gap, cy + dp(5f), searchText)
+            c.drawLine(
+                mx + r * 0.72f, my + r * 0.72f,
+                startX + iconW - dp(0.5f), cy + dp(4f), magPaint
+            )
+            val fm = searchText.fontMetrics
+            val textY = cy - (fm.ascent + fm.descent) / 2f   // centrado vertical exacto
+            c.drawText(label, startX + iconW + gap, textY, searchText)
         }
 
         // puntos de página (aparecen al deslizar)
