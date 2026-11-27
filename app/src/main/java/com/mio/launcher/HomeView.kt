@@ -1,4 +1,3 @@
-
 package com.mio.launcher
 
 import android.animation.Animator
@@ -718,8 +717,8 @@ class HomeView(private val act: Activity) : View(act) {
 
         if (pageCount > 1) {
             val dotGap = dp(12f)
-            val startX = folderPanel.centerX -
-                (pageCount - 1) * dotGap / 2f
+ val startX = folderPanel.centerX() -
+    (pageCount - 1) * dotGap / 2f
 
             for (i in 0 until pageCount) {
                 folderDotPaint.color =
