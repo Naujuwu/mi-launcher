@@ -26,6 +26,9 @@ import com.mio.launcher.ui.IconRenderer
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import android.app.AlertDialog
+import android.text.InputType
+import android.widget.EditText
 
 private const val MODE_NONE = 0
 private const val MODE_PRESS = 1
