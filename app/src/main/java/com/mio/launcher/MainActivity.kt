@@ -4,6 +4,9 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.app.AlertDialog
+import android.app.Notification
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -19,6 +22,9 @@ import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
+import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
@@ -54,6 +60,41 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         home.reloadApps()
+        checkNotificationAccess()
+    }
+
+    private fun hasNotifAccess(): Boolean {
+        val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+            ?: return false
+        return flat.split(":").any {
+            ComponentName.unflattenFromString(it)?.packageName == packageName
+        }
+    }
+
+    private fun checkNotificationAccess() {
+        if (hasNotifAccess()) {
+            if (!NotifService.connected) {
+                try {
+                    NotificationListenerService.requestRebind(
+                        ComponentName(this, NotifService::class.java)
+                    )
+                } catch (e: Exception) {
+                    // sin acceso todavía
+                }
+            }
+            return
+        }
+        val prefs = getSharedPreferences("layout", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("askedNotif", false)) return
+        prefs.edit().putBoolean("askedNotif", true).apply()
+        AlertDialog.Builder(this)
+            .setTitle("Globos de notificaciones")
+            .setMessage("Para mostrar los números sobre los iconos, activa el acceso a notificaciones para Mi Launcher.")
+            .setPositiveButton("Activar") { _, _ ->
+                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }
+            .setNegativeButton("Ahora no", null)
+            .show()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -119,6 +160,17 @@ class HomeView(private val act: Activity) : View(act) {
         strokeCap = Paint.Cap.ROUND
     }
 
+    private val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFF383C.toInt()   // rojo de iOS 26
+    }
+    private val badgeText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create("sans-serif", Typeface.BOLD)
+        textSize = iconSize * 0.34f * 0.62f
+    }
+    private val badgeRect = RectF()
+
     // ---- geometría ----
     private var topInset = dp(32f)
     private var bottomInset = dp(16f)
@@ -177,6 +229,16 @@ class HomeView(private val act: Activity) : View(act) {
             animateToPage(currentPage - 1)
         }
         edgeDir = 0
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        NotifService.onChanged = { invalidate() }
+    }
+
+    override fun onDetachedFromWindow() {
+        NotifService.onChanged = null
+        super.onDetachedFromWindow()
     }
 
     // =====================  API pública  =====================
@@ -422,6 +484,7 @@ class HomeView(private val act: Activity) : View(act) {
             val cx = offX + gridLeft + (col + 0.5f) * cellW
             val top = gridTop + row * cellH + (cellH - iconSize - dp(18f)) / 2f
             c.drawBitmap(app.icon, cx - iconSize / 2f, top, iconPaint)
+            drawBadge(c, pkg, cx - iconSize / 2f, top)
             val shown = app.shown ?: fit(app.label, iconSize).also { app.shown = it }
             c.drawText(shown, cx, top + iconSize + dp(15f), labelPaint)
         }
@@ -486,7 +549,25 @@ class HomeView(private val act: Activity) : View(act) {
             val app = apps[pkg] ?: continue
             val cx = dockLeft + (i + 0.5f) * dockPitch
             c.drawBitmap(app.icon, cx - iconSize / 2f, dockRect.centerY() - iconSize / 2f, iconPaint)
+            drawBadge(c, pkg, cx - iconSize / 2f, dockRect.centerY() - iconSize / 2f)
         }
+    }
+
+    // Globo rojo de notificaciones, estilo iOS 26: crece según los dígitos
+    private fun drawBadge(c: Canvas, pkg: String, iconLeft: Float, iconTop: Float) {
+        if (NotifService.dnd) return                       // No molestar: ocultos
+        val count = NotifService.counts[pkg] ?: return
+        if (count <= 0) return
+        val label = if (count > 999) "999+" else count.toString()
+        val h = iconSize * 0.34f
+        val tw = badgeText.measureText(label)
+        val w = max(h, tw + h * 0.62f)
+        val right = iconLeft + iconSize + iconSize * 0.06f
+        badgeRect.set(right - w, iconTop - h / 2f, right, iconTop + h / 2f)
+        c.drawRoundRect(badgeRect, h / 2f, h / 2f, badgePaint)
+        val fm = badgeText.fontMetrics
+        val baseline = badgeRect.centerY() - (fm.ascent + fm.descent) / 2f
+        c.drawText(label, badgeRect.centerX(), baseline, badgeText)
     }
 
     private fun drawDragged(c: Canvas) {
@@ -694,5 +775,61 @@ class HomeView(private val act: Activity) : View(act) {
         })
         pageAnimator = a
         a.start()
+    }
+}
+
+
+class NotifService : NotificationListenerService() {
+
+    companion object {
+        @Volatile var counts: Map<String, Int> = emptyMap()
+        @Volatile var dnd: Boolean = false
+        @Volatile var connected: Boolean = false
+        var onChanged: (() -> Unit)? = null
+    }
+
+    override fun onListenerConnected() {
+        connected = true
+        refresh()
+    }
+
+    override fun onListenerDisconnected() {
+        connected = false
+        counts = emptyMap()
+        onChanged?.invoke()
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        refresh()
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        refresh()
+    }
+
+    override fun onInterruptionFilterChanged(interruptionFilter: Int) {
+        refresh()
+    }
+
+    private fun refresh() {
+        val map = HashMap<String, Int>()
+        try {
+            val list = activeNotifications ?: emptyArray()
+            for (sbn in list) {
+                val flags = sbn.notification.flags
+                if ((flags and Notification.FLAG_GROUP_SUMMARY) != 0) continue
+                if ((flags and Notification.FLAG_ONGOING_EVENT) != 0) continue
+                if (!sbn.isClearable) continue
+                map[sbn.packageName] = (map[sbn.packageName] ?: 0) + 1
+            }
+        } catch (e: Exception) {
+            // el sistema aún no nos conectó
+        }
+        counts = map
+        val f = currentInterruptionFilter
+        dnd = f == INTERRUPTION_FILTER_PRIORITY ||
+            f == INTERRUPTION_FILTER_NONE ||
+            f == INTERRUPTION_FILTER_ALARMS
+        onChanged?.invoke()
     }
 }
