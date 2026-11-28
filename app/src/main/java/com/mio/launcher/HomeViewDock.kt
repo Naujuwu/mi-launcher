@@ -5,7 +5,7 @@ import android.graphics.Color
 import kotlin.math.max
 
 internal fun HomeView.drawPill(c: Canvas) {
-    val n = store.pages.size
+    val n = store.pages.size + 1
     val label = "Search"
 
     val tw = searchText.measureText(label)
