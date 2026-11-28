@@ -1,8 +1,5 @@
-
 package com.mio.launcher
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Intent
@@ -15,7 +12,6 @@ import android.graphics.RectF
 import android.graphics.RenderEffect
 import android.graphics.RenderNode
 import android.os.Build
-import android.view.WindowManager
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.os.Handler
@@ -24,52 +20,44 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.view.animation.DecelerateInterpolator
 import com.mio.launcher.layout.LayoutStore
-import com.mio.launcher.models.AppFolder
 import com.mio.launcher.models.AppItem
 import com.mio.launcher.ui.IconRenderer
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.min
-import android.app.AlertDialog
-import android.text.InputType
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.graphics.drawable.GradientDrawable
-import android.util.TypedValue
-import android.view.Gravity
-import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
-import android.content.Context
 
-private const val MODE_NONE = 0
-private const val MODE_PRESS = 1
-private const val MODE_SWIPE = 2
-private const val MODE_DRAG = 3
-private const val MODE_FOLDER = 4
+internal const val MODE_NONE = 0
+internal const val MODE_PRESS = 1
+internal const val MODE_SWIPE = 2
+internal const val MODE_DRAG = 3
+internal const val MODE_FOLDER = 4
 
-class HomeView(private val act: Activity) : View(act) {
+class HomeView(internal val act: Activity) : View(act) {
+    internal val cols = 4
 
-    private val cols = 4
-    private val rows = 6
-    private val perPage = cols * rows
+    internal val rows = 6
 
-    private val store = LayoutStore(act, cols, rows)
-    private val ui = Handler(Looper.getMainLooper())
+    internal val perPage = cols * rows
 
-    private val apps = LinkedHashMap<String, AppItem>()
-    private var loaded = false
+    internal val store = LayoutStore(act, cols, rows)
 
-    private fun dp(v: Float) = v * resources.displayMetrics.density
+    internal val ui = Handler(Looper.getMainLooper())
 
-    private val iconPx = (resources.displayMetrics.widthPixels * 0.16f).toInt()
-    private val iconSize = iconPx.toFloat()
+    internal val apps = LinkedHashMap<String, AppItem>()
 
-    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    internal var loaded = false
 
-    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal fun dp(v: Float) = v * resources.displayMetrics.density
+
+    internal val iconPx = (resources.displayMetrics.widthPixels * 0.16f).toInt()
+
+    internal val iconSize = iconPx.toFloat()
+
+    internal val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+    internal val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
         textSize = iconSize * 0.19f
@@ -78,75 +66,84 @@ class HomeView(private val act: Activity) : View(act) {
         setShadowLayer(dp(2f), 0f, dp(0.5f), 0x73000000)
     }
 
-    private val glassPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val glassPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    internal val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = dp(1f)
         color = 0x55FFFFFF
     }
 
-    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    internal val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val searchText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val searchText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = dp(12.5f)
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
     }
 
-    private val magPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val magPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.STROKE
         strokeWidth = dp(1.5f)
         strokeCap = Paint.Cap.ROUND
     }
 
-    private val pillBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val pillBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = dp(0.7f)
     }
 
-    private val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFFFF383C.toInt()
     }
 
-    private val badgeText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val badgeText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif", Typeface.BOLD)
         textSize = iconSize * 0.40f * 0.62f
     }
 
-    private val badgeRect = RectF()
+    internal val badgeRect = RectF()
 
     // Geometría principal
 
-    private var topInset = dp(32f)
-    private var bottomInset = dp(16f)
+    internal var topInset = dp(32f)
 
-    private var gridTop = 0f
-    private var gridLeft = 0f
-    private var cellW = 0f
-    private var cellH = 0f
+    internal var bottomInset = dp(16f)
 
-    private var dockLeft = 0f
-    private var dockPitch = 0f
+    internal var gridTop = 0f
 
-    private var pillTop = 0f
-    private var pillH = 0f
+    internal var gridLeft = 0f
 
-    private val dockRect = RectF()
-    private val pillRect = RectF()
+    internal var cellW = 0f
 
-    private var dockShader: Shader? = null
+    internal var cellH = 0f
+
+    internal var dockLeft = 0f
+
+    internal var dockPitch = 0f
+
+    internal var pillTop = 0f
+
+    internal var pillH = 0f
+
+    internal val dockRect = RectF()
+
+    internal val pillRect = RectF()
+
+    internal var dockShader: Shader? = null
 
     // Carpetas
 
-    private var openFolderId: String? = null
-    private var folderPage = 0
+    internal var openFolderId: String? = null
 
-    private val folderPanel = RectF()
+    internal var folderPage = 0
 
-    private val folderTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val folderPanel = RectF()
+
+    internal val folderTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = dp(30f)
         textAlign = Paint.Align.CENTER
@@ -154,7 +151,7 @@ class HomeView(private val act: Activity) : View(act) {
         setShadowLayer(dp(8f), 0f, dp(3f), 0x66000000)
     }
 
-    private val folderLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val folderLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = dp(11.5f)
         textAlign = Paint.Align.CENTER
@@ -163,43 +160,46 @@ class HomeView(private val act: Activity) : View(act) {
         setShadowLayer(dp(2f), 0f, dp(0.5f), 0x73000000)
     }
 
-    private val folderPanelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    internal val folderPanelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val folderPanelBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val folderPanelBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0x59FFFFFF
         style = Paint.Style.STROKE
         strokeWidth = dp(1f)
     }
 
-    private val folderIconBgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    internal val folderIconBgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val folderIconBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val folderIconBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0x66FFFFFF
         style = Paint.Style.STROKE
         strokeWidth = dp(1f)
     }
 
-    private val folderOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val folderOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0x66000000
     }
 
-    private val folderDotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    internal val folderDotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val folderIconPaint =
+    internal val folderIconPaint =
         Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-    private val folderHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    internal val folderHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0x14FFFFFF
     }
 
-    private var renameBox: FrameLayout? = null
-    private var renameEdit: EditText? = null
-    private var renamingFolderId: String? = null
+    internal var renameBox: FrameLayout? = null
 
-    private var folderDragPkg: String? = null
-    private var dragFromFolderId: String? = null
+    internal var renameEdit: EditText? = null
 
-    private val folderLongPress = Runnable {
+    internal var renamingFolderId: String? = null
+
+    internal var folderDragPkg: String? = null
+
+    internal var dragFromFolderId: String? = null
+
+    internal val folderLongPress = Runnable {
         val id = openFolderId ?: return@Runnable
         val folder = store.folders[id] ?: return@Runnable
 
@@ -216,56 +216,70 @@ class HomeView(private val act: Activity) : View(act) {
         invalidate()
     }
 
-    private var folderDownX = 0f
-    private var folderDownY = 0f
-    private var folderPageOffset = 0f
-    private var folderPageAnimator: ValueAnimator? = null
+    internal var folderDownX = 0f
+
+    internal var folderDownY = 0f
+
+    internal var folderPageOffset = 0f
+
+    internal var folderPageAnimator: ValueAnimator? = null
 
     // Puntos de página
 
-    private var dotsMix = 0f
-    private var dotsTarget = 0f
-    private var dotsAnimator: ValueAnimator? = null
+    internal var dotsMix = 0f
 
-    private val hideDots = Runnable {
+    internal var dotsTarget = 0f
+
+    internal var dotsAnimator: ValueAnimator? = null
+
+    internal val hideDots = Runnable {
         animateDots(0f)
     }
 
     // Estado
 
-    private var currentPage = 0
-    private var pageOffset = 0f
-    private var pageAnimator: ValueAnimator? = null
+    internal var currentPage = 0
 
-    private val touchSlop =
+    internal var pageOffset = 0f
+
+    internal var pageAnimator: ValueAnimator? = null
+
+    internal val touchSlop =
         ViewConfiguration.get(act).scaledTouchSlop.toFloat()
 
-    private var mode = MODE_NONE
+    internal var mode = MODE_NONE
 
-    private var downX = 0f
-    private var downY = 0f
-    private var lastX = 0f
-    private var lastY = 0f
+    internal var downX = 0f
 
-    private var pressInDock = false
-    private var pressIndex = -1
+    internal var downY = 0f
 
-    private var dragPkg: String? = null
+    internal var lastX = 0f
 
-    private var dragX = 0f
-    private var dragY = 0f
+    internal var lastY = 0f
 
-    private var srcInDock = false
-    private var srcPage = 0
-    private var srcIndex = -1
+    internal var pressInDock = false
 
-    private var edgeDir = 0
+    internal var pressIndex = -1
 
-    private val squircle: Path by lazy {
+    internal var dragPkg: String? = null
+
+    internal var dragX = 0f
+
+    internal var dragY = 0f
+
+    internal var srcInDock = false
+
+    internal var srcPage = 0
+
+    internal var srcIndex = -1
+
+    internal var edgeDir = 0
+
+    internal val squircle: Path by lazy {
         IconRenderer.buildSquircle(iconSize, 5.0)
     }
 
-    private val longPress = Runnable {
+    internal val longPress = Runnable {
         if (mode != MODE_PRESS) return@Runnable
 
         val pkg = pkgAt(
@@ -277,7 +291,7 @@ class HomeView(private val act: Activity) : View(act) {
         startDrag(pkg)
     }
 
-    private val edgeRunnable = Runnable {
+    internal val edgeRunnable = Runnable {
         if (mode != MODE_DRAG) return@Runnable
 
         if (edgeDir > 0) {
@@ -382,7 +396,7 @@ class HomeView(private val act: Activity) : View(act) {
         computeGeometry()
     }
 
-    private fun computeGeometry() {
+    internal fun computeGeometry() {
         val w = width.toFloat()
         val h = height.toFloat()
 
@@ -446,7 +460,7 @@ class HomeView(private val act: Activity) : View(act) {
         invalidate()
     }
 
-    private fun gridCellAt(x: Float, y: Float): Int {
+    internal fun gridCellAt(x: Float, y: Float): Int {
         if (cellW <= 0f || cellH <= 0f) return -1
 
         if (y < gridTop || y >= gridTop + cellH * rows) {
@@ -467,7 +481,7 @@ class HomeView(private val act: Activity) : View(act) {
         return row * cols + col
     }
 
-    private fun dockCellAt(x: Float, y: Float): Int {
+    internal fun dockCellAt(x: Float, y: Float): Int {
         if (x < dockRect.left || x > dockRect.right) return -1
 
         if (y < dockRect.top - dp(10f) ||
@@ -479,7 +493,7 @@ class HomeView(private val act: Activity) : View(act) {
             .coerceIn(0, 3)
     }
 
-    private fun pkgAt(
+    internal fun pkgAt(
         inDock: Boolean,
         idx: Int,
         page: Int
@@ -495,7 +509,7 @@ class HomeView(private val act: Activity) : View(act) {
 
     // Dibujo principal
 
-    private var bgNode: RenderNode? = null
+    internal var bgNode: RenderNode? = null
 
     override fun onDraw(canvas: Canvas) {
         val folderOpen = openFolderId != null
@@ -524,1055 +538,23 @@ class HomeView(private val act: Activity) : View(act) {
         }
     }
 
-    private fun drawHome(canvas: Canvas) {
-        for (p in (currentPage - 1)..(currentPage + 1)) {
-            if (p < 0 || p >= store.pages.size) continue
+    internal val sqTmp = Path()
 
-            val offX = (p - currentPage) * width + pageOffset
+    internal var sqBase: Path? = null
 
-            if (offX <= -width || offX >= width) continue
+    internal var sqBaseSize = -1f
 
-            drawPage(canvas, p, offX)
-        }
+    internal var sqBaseN = -1.0
 
-        drawPill(canvas)
-        drawDock(canvas)
-        drawDragged(canvas)
-    }
+    internal val sqMatrix = android.graphics.Matrix()
 
-    private fun fit(label: String, maxW: Float): String {
-        if (labelPaint.measureText(label) <= maxW) {
-            return label
-        }
-
-        var s = label
-
-        while (
-            s.isNotEmpty() &&
-            labelPaint.measureText(s + "…") > maxW
-        ) {
-            s = s.dropLast(1)
-        }
-
-        return s + "…"
-    }
-
-    private fun drawPage(
-        c: Canvas,
-        p: Int,
-        offX: Float
-    ) {
-        val cells = store.pages[p]
-
-        for (i in 0 until perPage) {
-            val slot = cells[i] ?: continue
-
-            if (
-                dragPkg != null &&
-                !srcInDock &&
-                srcPage == p &&
-                srcIndex == i
-            ) continue
-
-            val col = i % cols
-            val row = i / cols
-
-            val cx = offX + gridLeft + (col + 0.5f) * cellW
-
-            val top = gridTop +
-                row * cellH +
-                (cellH - iconSize - dp(18f)) / 2f
-
-            drawSlot(
-                c,
-                slot,
-                cx - iconSize / 2f,
-                top,
-                iconSize,
-                true
-            )
-        }
-    }
-
-    private fun drawSlot(
-        c: Canvas,
-        slot: String,
-        left: Float,
-        top: Float,
-        size: Float,
-        showLabel: Boolean
-    ) {
-        if (store.isFolderSlot(slot)) {
-            drawFolderIcon(c, slot, left, top, size)
-
-            if (showLabel) {
-                val folder = store.getFolderFromSlot(slot)
-                val name = folder?.name ?: "Carpeta"
-
-                c.drawText(
-                    fit(name, cellW - dp(6f)),
-                    left + size / 2f,
-                    top + size + dp(17f),
-                    labelPaint
-                )
-            }
-            return
-        }
-
-        val app = apps[slot] ?: return
-
-        c.drawBitmap(
-            app.icon,
-            null,
-            RectF(left, top, left + size, top + size),
-            iconPaint
-        )
-
-        if (size >= iconSize * 0.8f) {
-            drawBadge(c, slot, left, top)
-        }
-
-        if (showLabel) {
-            val shown = app.shown ?: fit(
-                app.label,
-                cellW - dp(6f)
-            ).also {
-                app.shown = it
-            }
-
-            c.drawText(
-                shown,
-                left + size / 2f,
-                top + size + dp(17f),
-                labelPaint
-            )
-        }
-    }
-
-    // Icono cerrado de carpeta: cuadrícula 3x3
-
-    private val sqTmp = Path()
-    private var sqBase: Path? = null
-    private var sqBaseSize = -1f
-    private var sqBaseN = -1.0
-    private val sqMatrix = android.graphics.Matrix()
-
-    // Squircle: n=5 para iconos, n=9 (esquinas más cerradas) para el panel
-    private fun squirclePath(
-        left: Float,
-        top: Float,
-        size: Float,
-        n: Double = 5.0,
-        stretchY: Float = 1f
-    ): Path {
-        if (sqBase == null || sqBaseSize != size || sqBaseN != n) {
-            sqBase = IconRenderer.buildSquircle(size, n)
-            sqBaseSize = size
-            sqBaseN = n
-        }
-
-        sqMatrix.setScale(1f, stretchY)
-        sqMatrix.postTranslate(left, top)
-
-        sqTmp.reset()
-        sqTmp.addPath(sqBase!!, sqMatrix)
-
-        return sqTmp
-    }
-
-    private fun drawFolderIcon(
-        c: Canvas,
-        slot: String,
-        left: Float,
-        top: Float,
-        size: Float
-    ) {
-        val folder = store.getFolderFromSlot(slot) ?: return
-        val rect = RectF(left, top, left + size, top + size)
-        val radius = size * 0.25f
-
-        folderIconBgPaint.shader = LinearGradient(
-            left,
-            top,
-            left + size,
-            top + size,
-            intArrayOf(
-                0xDDF4FFFF.toInt(),
-                0xCDE5FFFF.toInt(),
-                0xBBD5F5FF.toInt()
-            ),
-            null,
-            Shader.TileMode.CLAMP
-        )
-
-        c.drawPath(
-            squirclePath(left, top, size),
-            folderIconBgPaint
-        )
-
-        folderIconBgPaint.shader = null
-
-        c.drawPath(
-            squirclePath(left, top, size),
-            folderIconBorderPaint
-        )
-
-        val padding = size * 0.13f
-        val gap = size * 0.055f
-        val mini = (size - padding * 2f - gap * 2f) / 3f
-
-        for (i in 0 until min(9, folder.apps.size)) {
-            val app = apps[folder.apps[i]] ?: continue
-            val col = i % 3
-            val row = i / 3
-            val x = left + padding + col * (mini + gap)
-            val y = top + padding + row * (mini + gap)
-
-            c.drawBitmap(
-                app.icon,
-                null,
-                RectF(x, y, x + mini, y + mini),
-                folderIconPaint
-            )
-        }
-
-        val total = if (NotifService.dnd) 0 else {
-            folder.apps.sumOf { pkg ->
-                (NotifService.counts[pkg] ?: 0).coerceAtLeast(0)
-            }
-        }
-
-        if (total > 0) {
-            drawBadgeValue(c, total, left, top, size)
-        }
-    }
-
-    // Geometría del panel abierto
-
-    private fun folderCount(): Int =
-        openFolderId?.let { store.folders[it]?.apps?.size } ?: 0
-
-    // El panel siempre es de 3x3, como en iOS 26
-    private fun folderRows(): Int = 3
-
-    private fun folderIconSize(): Float = folderPanel.width() * 0.195f
-
-    private fun folderCellH(): Float = folderPanel.width() * 0.3215f
-
-    private fun folderGridTop(): Float =
-        folderPanel.top + folderPanel.width() * 0.085f
-
-    private fun folderGridBottom(): Float =
-        folderGridTop() + folderRows() * folderCellH()
-
-    private fun folderPanelGeometry() {
-        val panelW = min(width * 0.84f, dp(440f))
-        val panelH = panelW * 1.07f
-
-        val left = (width - panelW) / 2f
-        val top = height * 0.54f - panelH / 2f
-
-        folderPanel.set(
-            left,
-            top,
-            left + panelW,
-            top + panelH
-        )
-    }
-
-    // Dibujo de carpeta abierta
-
-    private fun drawOpenFolder(c: Canvas) {
-        val id = openFolderId ?: return
-        val folder = store.folders[id] ?: return
-
-        folderPanelGeometry()
-
-        c.drawRect(
-            0f,
-            0f,
-            width.toFloat(),
-            height.toFloat(),
-            folderOverlayPaint
-        )
-
-        folderTitlePaint.textSize = width * 0.083f
-        folderLabelPaint.textSize = folderPanel.width() * 0.037f
-
-        folderPanelPaint.shader = LinearGradient(
-            folderPanel.left,
-            folderPanel.top,
-            folderPanel.right,
-            folderPanel.bottom,
-            intArrayOf(
-                0x5CFFFFFF,
-                0x45FFFFFF,
-                0x52FFFFFF
-            ),
-            null,
-            Shader.TileMode.CLAMP
-        )
-
-        c.drawPath(
-            squirclePath(
-                folderPanel.left,
-                folderPanel.top,
-                folderPanel.width(),
-                9.0,
-                1.07f
-            ),
-            folderPanelPaint
-        )
-
-        folderPanelPaint.shader = null
-
-        c.drawPath(
-            squirclePath(
-                folderPanel.left,
-                folderPanel.top,
-                folderPanel.width(),
-                9.0,
-                1.07f
-            ),
-            folderPanelBorderPaint
-        )
-
-        val pageCount = max(1, (folder.apps.size + 8) / 9)
-
-        if (renameEdit == null) {
-            c.drawText(
-                folder.name,
-                width / 2f,
-                folderPanel.top - folderPanel.width() * 0.20f,
-                folderTitlePaint
-            )
-        }
-
-        val gridTop = folderGridTop()
-
-        val cellW = folderPanel.width() * 0.30f
-        val cellH = folderCellH()
-
-        val icon = folderIconSize()
-
-        c.save()
-        c.clipPath(
-            squirclePath(
-                folderPanel.left,
-                folderPanel.top,
-                folderPanel.width(),
-                9.0,
-                1.07f
-            )
-        )
-
-        for (
-            page in max(0, folderPage - 1)..
-                min(pageCount - 1, folderPage + 1)
-        ) {
-            val translation =
-                (page - folderPage) * folderPanel.width() +
-                    folderPageOffset
-
-            c.save()
-            c.translate(translation, 0f)
-
-            for (i in 0 until 9) {
-                val appIndex = page * 9 + i
-
-                if (appIndex >= folder.apps.size) break
-
-                val pkg = folder.apps[appIndex]
-                val app = apps[pkg] ?: continue
-
-                if (pkg == folderDragPkg) continue
-
-                val col = i % 3
-                val row = i / 3
-
-                val cx = folderPanel.left +
-                    folderPanel.width() * 0.20f +
-                    col * cellW
-
-                val left = cx - icon / 2f
-                val top = gridTop + row * cellH
-
-                c.drawBitmap(
-                    app.icon,
-                    null,
-                    RectF(
-                        left,
-                        top,
-                        left + icon,
-                        top + icon
-                    ),
-                    iconPaint
-                )
-
-                drawBadge(c, pkg, left, top, icon)
-
-                c.drawText(
-                    fitFolderLabel(
-                        app.label,
-                        cellW - dp(6f)
-                    ),
-                    cx,
-                    top + icon + folderPanel.width() * 0.052f,
-                    folderLabelPaint
-                )
-            }
-
-            c.restore()
-        }
-
-        c.restore()
-
-        if (pageCount > 1) {
-            val dotGap = dp(12f)
-
-            val startX = folderPanel.centerX() -
-                (pageCount - 1) * dotGap / 2f
-
-            for (i in 0 until pageCount) {
-                folderDotPaint.color =
-                    if (i == folderPage) {
-                        Color.WHITE
-                    } else {
-                        0x66FFFFFF
-                    }
-
-                c.drawCircle(
-                    startX + i * dotGap,
-                    folderPanel.bottom - folderPanel.width() * 0.045f,
-                    dp(3.5f),
-                    folderDotPaint
-                )
-            }
-        }
-
-        val dragged = folderDragPkg
-
-        if (dragged != null) {
-            val app = apps[dragged]
-
-            if (app != null) {
-                val size = folderIconSize()
-
-                c.save()
-                c.scale(1.15f, 1.15f, dragX, dragY)
-
-                c.drawBitmap(
-                    app.icon,
-                    null,
-                    RectF(
-                        dragX - size / 2f,
-                        dragY - size / 2f,
-                        dragX + size / 2f,
-                        dragY + size / 2f
-                    ),
-                    iconPaint
-                )
-
-                c.restore()
-            }
-        }
-    }
-
-    private fun fitFolderLabel(
-        label: String,
-        maxWidth: Float
-    ): String {
-        if (folderLabelPaint.measureText(label) <= maxWidth) {
-            return label
-        }
-
-        var result = label
-
-        while (
-            result.isNotEmpty() &&
-            folderLabelPaint.measureText(result + "…") > maxWidth
-        ) {
-            result = result.dropLast(1)
-        }
-
-        return result + "…"
-    }
-
-    private fun folderCellAt(x: Float, y: Float): Int {
-        val id = openFolderId ?: return -1
-        val folder = store.folders[id] ?: return -1
-
-        folderPanelGeometry()
-
-        if (!folderPanel.contains(x, y)) return -1
-
-        val gridTop = folderGridTop()
-        val gridBottom = folderGridBottom()
-
-        if (y < gridTop || y >= gridBottom) return -1
-
-        val pitch = folderPanel.width() * 0.30f
-
-        val col = Math.floor(
-            ((x - folderPanel.left -
-                folderPanel.width() * 0.20f + pitch / 2f) / pitch).toDouble()
-        ).toInt()
-
-        val row = ((y - gridTop) /
-            folderCellH()).toInt()
-
-        if (col !in 0..2 || row !in 0 until folderRows()) return -1
-
-        val index = folderPage * 9 + row * 3 + col
-
-        return if (index in folder.apps.indices) index else -1
-    }
-
-    private fun openFolder(slot: String) {
-        val id = store.folderIdFromSlot(slot) ?: return
-
-        if (store.folders[id] == null) return
-
-        folderPageAnimator?.cancel()
-
-        openFolderId = id
-        folderPage = 0
-        folderPageOffset = 0f
-        mode = MODE_NONE
-
-        setWindowBlur(true)
-        invalidate()
-    }
-
-    private fun closeFolder() {
-        if (renameEdit != null) commitRename()
-
-        folderPageAnimator?.cancel()
-
-        openFolderId = null
-        folderPage = 0
-        folderPageOffset = 0f
-        mode = MODE_NONE
-
-        setWindowBlur(false)
-        invalidate()
-    }
-
-    // Desenfoca el fondo de pantalla detrás de la ventana (Android 12+)
-    private fun setWindowBlur(on: Boolean) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
-
-        try {
-            val w = act.window
-            val lp = w.attributes
-
-            if (on) {
-                lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
-                lp.blurBehindRadius = dp(60f).toInt()
-            } else {
-                lp.flags = lp.flags and
-                    WindowManager.LayoutParams.FLAG_BLUR_BEHIND.inv()
-                lp.blurBehindRadius = 0
-            }
-
-            w.attributes = lp
-        } catch (_: Throwable) {
-        }
-    }
-
-    private fun folderTitleArea(): RectF = RectF(
-        folderPanel.left,
-        folderPanel.top - folderPanel.width() * 0.40f,
-        folderPanel.right,
-        folderPanel.top - dp(4f)
-    )
-
-    // Edición del nombre en línea, estilo iOS (mantener pulsado el título)
-    private fun startRename(folderId: String) {
-        if (renameEdit != null) return
-
-        val folder = store.folders[folderId] ?: return
-        val host = parent as? ViewGroup ?: return
-
-        folderPanelGeometry()
-
-        val textPx = width * 0.083f
-        val boxH = (textPx * 1.6f).toInt()
-        val boxW = folderPanel.width().toInt()
-
-        val baseline = folderPanel.top - folderPanel.width() * 0.20f
-        val centerY = baseline - textPx * 0.35f
-
-        val box = FrameLayout(act)
-
-        val bg = GradientDrawable().apply {
-            setColor(0x8C4F5963.toInt())
-            cornerRadius = boxH * 0.34f
-            setStroke(dp(1f).toInt(), 0x33FFFFFF)
-        }
-
-        box.background = bg
-
-        val edit = EditText(act).apply {
-            setText(folder.name)
-            setSelection(text.length)
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, textPx)
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            background = null
-            setSingleLine(true)
-            inputType = InputType.TYPE_CLASS_TEXT or
-                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            imeOptions = EditorInfo.IME_ACTION_DONE
-            includeFontPadding = false
-            setPadding((boxH * 0.9f).toInt(), 0, (boxH * 0.9f).toInt(), 0)
-
-            setOnEditorActionListener { _, _, _ ->
-                commitRename()
-                true
-            }
-        }
-
-        box.addView(
-            edit,
-            FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-        )
-
-        val clearSize = (boxH * 0.40f).toInt()
-
-        val clear = object : View(act) {
-            private val p = Paint(Paint.ANTI_ALIAS_FLAG)
-
-            override fun onDraw(c: Canvas) {
-                val cx = width / 2f
-                val cy = height / 2f
-                val r = min(width, height) / 2f
-
-                p.style = Paint.Style.FILL
-                p.color = 0xCCC9CDD1.toInt()
-                c.drawCircle(cx, cy, r, p)
-
-                p.style = Paint.Style.STROKE
-                p.color = 0xFF3A4048.toInt()
-                p.strokeWidth = r * 0.22f
-                p.strokeCap = Paint.Cap.ROUND
-
-                val d = r * 0.32f
-
-                c.drawLine(cx - d, cy - d, cx + d, cy + d, p)
-                c.drawLine(cx - d, cy + d, cx + d, cy - d, p)
-            }
-        }
-
-        clear.setOnClickListener {
-            edit.setText("")
-        }
-
-        box.addView(
-            clear,
-            FrameLayout.LayoutParams(clearSize, clearSize).apply {
-                gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                marginEnd = (boxH * 0.3f).toInt()
-            }
-        )
-
-        host.addView(
-            box,
-            FrameLayout.LayoutParams(boxW, boxH).apply {
-                gravity = Gravity.TOP or Gravity.START
-                leftMargin = (x + folderPanel.left).toInt()
-                topMargin = (y + centerY - boxH / 2f).toInt()
-            }
-        )
-
-        renameBox = box
-        renameEdit = edit
-        renamingFolderId = folderId
-
-        edit.requestFocus()
-
-        edit.post {
-            val imm = act.getSystemService(Context.INPUT_METHOD_SERVICE)
-                as InputMethodManager
-            imm.showSoftInput(edit, InputMethodManager.SHOW_IMPLICIT)
-        }
-
-        invalidate()
-    }
-
-    private fun commitRename() {
-        val edit = renameEdit ?: return
-        val box = renameBox
-        val id = renamingFolderId
-
-        val name = edit.text.toString().trim()
-
-        renameEdit = null
-        renameBox = null
-        renamingFolderId = null
-
-        try {
-            val imm = act.getSystemService(Context.INPUT_METHOD_SERVICE)
-                as InputMethodManager
-            imm.hideSoftInputFromWindow(edit.windowToken, 0)
-        } catch (_: Throwable) {
-        }
-
-        (box?.parent as? ViewGroup)?.removeView(box)
-
-        if (id != null) {
-            store.folders[id]?.name = name
-            store.save()
-        }
-
-        invalidate()
-    }
-
-    private fun showRenameFolderDialog(folderId: String) {
-        val folder = store.folders[folderId] ?: return
-
-        val input = EditText(act).apply {
-            setText(folder.name)
-            setSelection(text.length)
-            inputType = InputType.TYPE_CLASS_TEXT or
-                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            setSingleLine(true)
-        }
-
-        AlertDialog.Builder(act)
-            .setTitle("Nombre de la carpeta")
-            .setView(input)
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Guardar") { _, _ ->
-                val name = input.text.toString().trim()
-
-                if (name.isNotEmpty()) {
-                    store.renameFolder(folderId, name)
-                    invalidate()
-                }
-            }
-            .show()
-    }
-
-    // Animación de páginas de carpeta
-
-    private fun animateFolderToPage(target: Int) {
-        val id = openFolderId ?: return
-        val folder = store.folders[id] ?: return
-
-        val pages = max(1, (folder.apps.size + 8) / 9)
-
-        if (target !in 0 until pages) {
-            folderPageOffset = 0f
-            invalidate()
-            return
-        }
-
-        folderPageAnimator?.cancel()
-        folderPanelGeometry()
-
-        val from = folderPageOffset
-
-        val to = when {
-            target > folderPage -> -folderPanel.width()
-            target < folderPage -> folderPanel.width()
-            else -> 0f
-        }
-
-        val animator = ValueAnimator.ofFloat(from, to).apply {
-            duration = 260L
-            interpolator = DecelerateInterpolator(1.5f)
-
-            addUpdateListener {
-                folderPageOffset = it.animatedValue as Float
-                invalidate()
-            }
-
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    if (openFolderId != id) return
-
-                    folderPage = target
-                    folderPageOffset = 0f
-                    invalidate()
-                }
-            })
-        }
-
-        folderPageAnimator = animator
-        animator.start()
-    }
-
-    private fun activateSlot(slot: String) {
+    internal fun activateSlot(slot: String) {
         if (store.isFolderSlot(slot)) {
             openFolder(slot)
         } else {
             launch(slot)
         }
     }
-
-    private fun drawPill(c: Canvas) {
-        val n = store.pages.size
-        val label = "Search"
-
-        val tw = searchText.measureText(label)
-
-        val iconW = dp(12f)
-        val gap = dp(5f)
-        val padH = dp(24f)
-
-        val searchW = iconW + gap + tw + padH
-
-        val dotGap = dp(10f)
-        val dr = dp(3f)
-
-        val dotsW = max(
-            searchW,
-            (n - 1) * dotGap + 2f * dr + padH
-        )
-
-        val pw = searchW + (dotsW - searchW) * dotsMix
-
-        val cx = width / 2f
-        val cy = pillTop + pillH / 2f
-
-        pillRect.set(
-            cx - pw / 2f,
-            pillTop,
-            cx + pw / 2f,
-            pillTop + pillH
-        )
-
-        glassPaint.shader = null
-        glassPaint.color = 0x33FFFFFF
-
-        c.drawRoundRect(
-            pillRect,
-            pillH / 2f,
-            pillH / 2f,
-            glassPaint
-        )
-
-        val half = pillBorder.strokeWidth / 2f
-        pillRect.inset(half, half)
-
-        c.drawRoundRect(
-            pillRect,
-            pillRect.height() / 2f,
-            pillRect.height() / 2f,
-            pillBorder
-        )
-
-        val sa = ((1f - dotsMix) * 255f).toInt()
-
-        if (sa > 0) {
-            searchText.alpha = sa
-            magPaint.alpha = sa
-
-            val startX = cx - (iconW + gap + tw) / 2f
-            val r = dp(3.8f)
-
-            val mx = startX + r
-            val my = cy - dp(0.8f)
-
-            c.drawCircle(mx, my, r, magPaint)
-
-            c.drawLine(
-                mx + r * 0.72f,
-                my + r * 0.72f,
-                startX + iconW - dp(0.5f),
-                cy + dp(4f),
-                magPaint
-            )
-
-            val fm = searchText.fontMetrics
-            val textY = cy - (fm.ascent + fm.descent) / 2f
-
-            c.drawText(
-                label,
-                startX + iconW + gap,
-                textY,
-                searchText
-            )
-        }
-
-        if (dotsMix > 0.01f && n > 1) {
-            val x0 = cx - ((n - 1) * dotGap) / 2f
-
-            val active = Math.round(
-                currentPage - pageOffset / width
-            )
-
-            for (i in 0 until n) {
-                val baseA = if (i == active) 255 else 110
-
-                dotPaint.color = Color.argb(
-                    (baseA * dotsMix).toInt(),
-                    255,
-                    255,
-                    255
-                )
-
-                c.drawCircle(
-                    x0 + i * dotGap,
-                    cy,
-                    dr,
-                    dotPaint
-                )
-            }
-        }
-    }
-
-    private fun drawDock(c: Canvas) {
-        val rad = dp(38f)
-
-        glassPaint.color = Color.WHITE
-        glassPaint.shader = dockShader
-
-        c.drawRoundRect(
-            dockRect,
-            rad,
-            rad,
-            glassPaint
-        )
-
-        glassPaint.shader = null
-
-        c.drawRoundRect(
-            dockRect,
-            rad,
-            rad,
-            borderPaint
-        )
-
-        for (i in 0 until 4) {
-            val slot = store.dock[i] ?: continue
-
-            if (
-                dragPkg != null &&
-                srcInDock &&
-                srcIndex == i
-            ) continue
-
-            val cx = dockLeft + (i + 0.5f) * dockPitch
-
-            drawSlot(
-                c,
-                slot,
-                cx - iconSize / 2f,
-                dockRect.centerY() - iconSize / 2f,
-                iconSize,
-                false
-            )
-        }
-    }
-
-    // Notificaciones
-
-    private fun drawBadge(
-        c: Canvas,
-        pkg: String,
-        iconLeft: Float,
-        iconTop: Float,
-        size: Float = iconSize
-    ) {
-        if (NotifService.dnd) return
-
-        val count = NotifService.counts[pkg] ?: return
-        if (count <= 0) return
-
-        drawBadgeValue(c, count, iconLeft, iconTop, size)
-    }
-
-    private fun drawBadgeValue(
-        c: Canvas,
-        count: Int,
-        iconLeft: Float,
-        iconTop: Float,
-        size: Float
-    ) {
-        val label = if (count > 999) "999+" else count.toString()
-        val h = size * 0.40f
-
-        val oldTextSize = badgeText.textSize
-        badgeText.textSize = size * 0.248f
-
-        val tw = badgeText.measureText(label)
-        val w = max(h, tw + h * 0.62f)
-
-        val cx = iconLeft + size - size * 0.02f
-        val cy = iconTop + size * 0.06f
-
-        badgeRect.set(
-            cx - w / 2f,
-            cy - h / 2f,
-            cx + w / 2f,
-            cy + h / 2f
-        )
-
-        c.drawRoundRect(
-            badgeRect,
-            h / 2f,
-            h / 2f,
-            badgePaint
-        )
-
-        val fm = badgeText.fontMetrics
-        val baseline = badgeRect.centerY() -
-            (fm.ascent + fm.descent) / 2f
-
-        c.drawText(
-            label,
-            badgeRect.centerX(),
-            baseline,
-            badgeText
-        )
-
-        badgeText.textSize = oldTextSize
-    }
-
-    private fun drawDragged(c: Canvas) {
-        val slot = dragPkg ?: return
-
-        c.save()
-
-        c.scale(
-            1.15f,
-            1.15f,
-            dragX,
-            dragY
-        )
-
-        if (store.isFolderSlot(slot)) {
-            drawFolderIcon(
-                c,
-                slot,
-                dragX - iconSize / 2f,
-                dragY - iconSize / 2f - dp(8f),
-                iconSize
-            )
-        } else {
-            val app = apps[slot] ?: return
-
-            iconPaint.alpha = 225
-
-            c.drawBitmap(
-                app.icon,
-                dragX - iconSize / 2f,
-                dragY - iconSize / 2f - dp(8f),
-                iconPaint
-            )
-
-            iconPaint.alpha = 255
-        }
-
-        c.restore()
-    }
-
-    // Eventos táctiles
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         if (renameEdit != null) {
@@ -1726,156 +708,7 @@ class HomeView(private val act: Activity) : View(act) {
         return true
     }
 
-    private fun handleFolderTouch(e: MotionEvent): Boolean {
-        when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                folderPageAnimator?.cancel()
-                folderDownX = e.x
-                folderDownY = e.y
-                folderPageOffset = 0f
-                folderDragPkg = null
-                mode = MODE_FOLDER
-
-                ui.removeCallbacks(folderLongPress)
-                ui.postDelayed(
-                    folderLongPress,
-                    ViewConfiguration.getLongPressTimeout().toLong()
-                )
-
-                return true
-            }
-
-            MotionEvent.ACTION_MOVE -> {
-                val dx = e.x - folderDownX
-                val dy = e.y - folderDownY
-
-                if (folderDragPkg != null) {
-                    dragX = e.x
-                    dragY = e.y
-
-                    if (!folderPanel.contains(e.x, e.y)) {
-                        leaveFolderWithDrag()
-                    } else {
-                        invalidate()
-                    }
-
-                    return true
-                }
-
-                if (abs(dx) > touchSlop || abs(dy) > touchSlop) {
-                    ui.removeCallbacks(folderLongPress)
-                }
-
-                if (abs(dx) > touchSlop && abs(dx) > abs(dy)) {
-                    val folder = openFolderId?.let { store.folders[it] }
-
-                    if (folder != null) {
-                        val pages = (folder.apps.size + 8) / 9
-
-                        folderPageOffset = when {
-                            dx < 0 && folderPage >= pages - 1 -> dx * 0.25f
-                            dx > 0 && folderPage <= 0 -> dx * 0.25f
-                            else -> dx
-                        }
-
-                        invalidate()
-                    }
-                }
-
-                return true
-            }
-
-            MotionEvent.ACTION_UP -> {
-                ui.removeCallbacks(folderLongPress)
-
-                val dx = e.x - folderDownX
-                val dy = e.y - folderDownY
-
-                val id = openFolderId
-                val folder = id?.let { store.folders[it] }
-
-                val draggedPkg = folderDragPkg
-
-                if (draggedPkg != null) {
-                    folderDragPkg = null
-
-                    if (folder != null) {
-                        val to = folderCellAt(e.x, e.y)
-                        val from = folder.apps.indexOf(draggedPkg)
-
-                        if (to >= 0 && from >= 0 && to != from) {
-                            folder.apps.removeAt(from)
-                            folder.apps.add(to, draggedPkg)
-                            store.save()
-                        }
-                    }
-
-                    mode = MODE_NONE
-                    invalidate()
-                    return true
-                }
-
-                if (folder == null) {
-                    closeFolder()
-                    return true
-                }
-
-                folderPanelGeometry()
-
-                if (abs(dx) > touchSlop * 2f && abs(dx) > abs(dy)) {
-                    val pages = (folder.apps.size + 8) / 9
-
-                    val target = when {
-                        dx < -width / 5f && folderPage < pages - 1 ->
-                            folderPage + 1
-
-                        dx > width / 5f && folderPage > 0 ->
-                            folderPage - 1
-
-                        else -> folderPage
-                    }
-
-                    animateFolderToPage(target)
-                    return true
-                }
-
-                if (folderTitleArea().contains(e.x, e.y)) {
-                    startRename(id)
-                    return true
-                }
-
-                if (!folderPanel.contains(e.x, e.y)) {
-                    closeFolder()
-                    return true
-                }
-
-                val index = folderCellAt(e.x, e.y)
-
-                if (index >= 0) {
-                    val pkg = folder.apps.getOrNull(index)
-
-                    if (pkg != null) {
-                        launch(pkg)
-                        closeFolder()
-                    }
-                }
-
-                return true
-            }
-
-            MotionEvent.ACTION_CANCEL -> {
-                ui.removeCallbacks(folderLongPress)
-                folderDragPkg = null
-                animateFolderToPage(folderPage)
-                mode = MODE_NONE
-                return true
-            }
-        }
-
-        return true
-    }
-
-    private fun clampOffset(dx: Float): Float {
+    internal fun clampOffset(dx: Float): Float {
         if (dx > 0 && currentPage == 0) {
             return dx * 0.3f
         }
@@ -1891,289 +724,4 @@ class HomeView(private val act: Activity) : View(act) {
     }
 
     // Arrastrar y soltar
-
-    private fun startDrag(pkg: String) {
-        mode = MODE_DRAG
-
-        dragPkg = pkg
-
-        srcInDock = pressInDock
-        srcPage = currentPage
-        srcIndex = pressIndex
-
-        dragX = lastX
-        dragY = lastY
-
-        edgeDir = 0
-
-        performHapticFeedback(
-            HapticFeedbackConstants.LONG_PRESS
-        )
-
-        parent?.requestDisallowInterceptTouchEvent(true)
-
-        invalidate()
-    }
-
-    private fun leaveFolderWithDrag() {
-        val pkg = folderDragPkg ?: return
-        val fid = openFolderId ?: return
-
-        folderDragPkg = null
-
-        closeFolder()
-
-        dragFromFolderId = fid
-        dragPkg = pkg
-
-        srcInDock = false
-        srcPage = currentPage
-        srcIndex = -1
-
-        edgeDir = 0
-        mode = MODE_DRAG
-
-        parent?.requestDisallowInterceptTouchEvent(true)
-        invalidate()
-    }
-
-    private fun dropFromFolder(pkg: String, folderId: String) {
-        val dIdx = dockCellAt(dragX, dragY)
-        val gIdx = if (dIdx >= 0) -1 else gridCellAt(dragX, dragY)
-
-        if (dIdx < 0 && gIdx < 0) return
-
-        val arr: Array<String?> = if (dIdx >= 0) {
-            store.dock
-        } else {
-            store.pages.getOrNull(currentPage) ?: return
-        }
-
-        val idx = if (dIdx >= 0) dIdx else gIdx
-        val target = arr.getOrNull(idx)
-
-        when {
-            target == null -> {
-                store.removeAppFromFolder(folderId, pkg)
-                arr[idx] = pkg
-            }
-
-            store.isFolderSlot(target) -> {
-                val tid = store.folderIdFromSlot(target)
-
-                if (tid != null && tid != folderId) {
-                    store.removeAppFromFolder(folderId, pkg)
-                    store.addAppToFolder(tid, pkg)
-                }
-            }
-
-            else -> {
-                store.removeAppFromFolder(folderId, pkg)
-
-                store.createFolder(pkg, target)
-            }
-        }
-    }
-
-    private fun checkEdge() {
-        val dir = when {
-            dragX < dp(30f) -> -1
-            dragX > width - dp(30f) -> 1
-            else -> 0
-        }
-
-        if (dir != edgeDir) {
-            ui.removeCallbacks(edgeRunnable)
-
-            edgeDir = dir
-
-            if (dir != 0) {
-                ui.postDelayed(edgeRunnable, 600)
-            }
-        }
-    }
-
-    private fun dropDragged() {
-        val pkg = dragPkg
-        val fromFolder = dragFromFolderId
-        dragFromFolderId = null
-
-        if (pkg != null && fromFolder != null) {
-            dropFromFolder(pkg, fromFolder)
-        } else if (pkg != null) {
-            val dIdx = dockCellAt(dragX, dragY)
-
-            val target = if (dIdx >= 0) {
-                store.dock.getOrNull(dIdx)
-            } else {
-                val gIdx = gridCellAt(dragX, dragY)
-
-                if (gIdx >= 0) {
-                    store.pages.getOrNull(currentPage)?.getOrNull(gIdx)
-                } else {
-                    null
-                }
-            }
-
-            val targetIsValid = dIdx >= 0 ||
-                gridCellAt(dragX, dragY) >= 0
-
-            if (targetIsValid) {
-                when {
-                    target == null -> {
-                        place(
-                            pkg,
-                            dIdx >= 0,
-                            currentPage,
-                            if (dIdx >= 0) dIdx else gridCellAt(dragX, dragY)
-                        )
-                    }
-
-                    target == pkg -> {
-                        // No hacer nada al soltar sobre el mismo espacio.
-                    }
-
-                    store.isFolderSlot(pkg) -> {
-                        // Las carpetas se pueden mover entre espacios.
-                        place(
-                            pkg,
-                            dIdx >= 0,
-                            currentPage,
-                            if (dIdx >= 0) dIdx else gridCellAt(dragX, dragY)
-                        )
-                    }
-
-                    store.isFolderSlot(target) -> {
-                        val folderId = store.folderIdFromSlot(target)
-
-                        if (folderId != null) {
-                            store.addAppToFolder(folderId, pkg)
-                        }
-                    }
-
-                    else -> {
-                        val folder = store.createFolder(pkg, target)
-
-                        if (folder == null) {
-                            place(
-                                pkg,
-                                dIdx >= 0,
-                                currentPage,
-                                if (dIdx >= 0) dIdx else gridCellAt(dragX, dragY)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        dragPkg = null
-        edgeDir = 0
-
-        currentPage = store.trimEmptyPages(currentPage)
-
-        store.save()
-        invalidate()
-    }
-
-    private fun place(
-        pkg: String,
-        toDock: Boolean,
-        toPage: Int,
-        toIdx: Int
-    ) {
-        val target = if (toDock) {
-            store.dock
-        } else {
-            store.pages.getOrNull(toPage) ?: return
-        }
-
-        val src = if (srcInDock) {
-            store.dock
-        } else {
-            store.pages.getOrNull(srcPage) ?: return
-        }
-
-        if (toIdx !in target.indices || srcIndex !in src.indices) return
-
-        val displaced = target[toIdx]
-
-        target[toIdx] = pkg
-        src[srcIndex] = displaced
-    }
-
-    // Animaciones
-
-    private fun showDots() {
-        if (store.pages.size <= 1) return
-
-        ui.removeCallbacks(hideDots)
-        animateDots(1f)
-    }
-
-    private fun scheduleHideDots() {
-        ui.removeCallbacks(hideDots)
-        ui.postDelayed(hideDots, 800)
-    }
-
-    private fun animateDots(target: Float) {
-        if (dotsTarget == target) return
-
-        dotsTarget = target
-        dotsAnimator?.cancel()
-
-        val a = ValueAnimator.ofFloat(dotsMix, target)
-        a.duration = 180
-
-        a.addUpdateListener {
-            dotsMix = it.animatedValue as Float
-            invalidate()
-        }
-
-        dotsAnimator = a
-        a.start()
-    }
-
-    private fun launch(pkg: String) {
-        act.packageManager
-            .getLaunchIntentForPackage(pkg)
-            ?.let {
-                act.startActivity(it)
-            }
-    }
-
-    private fun animateToPage(target: Int) {
-        if (target !in store.pages.indices) return
-
-        pageAnimator?.cancel()
-        showDots()
-
-        val from = pageOffset
-
-        val to = when {
-            target > currentPage -> -width.toFloat()
-            target < currentPage -> width.toFloat()
-            else -> 0f
-        }
-
-        val a = ValueAnimator.ofFloat(from, to)
-        a.duration = 220
-
-        a.addUpdateListener {
-            pageOffset = it.animatedValue as Float
-            invalidate()
-        }
-
-        a.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                currentPage = target
-                pageOffset = 0f
-                scheduleHideDots()
-                invalidate()
-            }
-        })
-
-        pageAnimator = a
-        a.start()
-    }
 }
