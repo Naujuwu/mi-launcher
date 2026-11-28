@@ -5,8 +5,6 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 
 internal fun HomeView.showDots() {
-    if (store.pages.size <= 1) return
-
     ui.removeCallbacks(hideDots)
     animateDots(1f)
 }
@@ -38,12 +36,13 @@ internal fun HomeView.launch(pkg: String) {
     act.packageManager
         .getLaunchIntentForPackage(pkg)
         ?.let {
+            libPushRecent(pkg)
             act.startActivity(it)
         }
 }
 
 internal fun HomeView.animateToPage(target: Int) {
-    if (target !in store.pages.indices) return
+    if (target < 0 || target > store.pages.size) return
 
     pageAnimator?.cancel()
     showDots()
@@ -68,6 +67,8 @@ internal fun HomeView.animateToPage(target: Int) {
         override fun onAnimationEnd(animation: Animator) {
             currentPage = target
             pageOffset = 0f
+
+            if (currentPage != store.pages.size) libReset()
             scheduleHideDots()
             invalidate()
         }
