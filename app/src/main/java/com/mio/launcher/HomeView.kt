@@ -275,6 +275,22 @@ class HomeView(internal val act: Activity) : View(act) {
 
     internal var edgeDir = 0
 
+    // Carpeta al mantener el icono encima: hace falta quedarse ~0.5 s
+    internal var hoverKey = -1
+    internal var folderReady = false
+
+    internal val folderDwell = Runnable {
+        folderReady = true
+        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        invalidate()
+    }
+
+    internal val targetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(70, 255, 255, 255)
+    }
+
+    internal val targetRect = RectF()
+
     internal val squircle: Path by lazy {
         IconRenderer.buildSquircle(iconSize, 5.0)
     }
@@ -635,6 +651,7 @@ class HomeView(internal val act: Activity) : View(act) {
                         dragX = e.x
                         dragY = e.y
 
+                        updateHover()
                         checkEdge()
                         invalidate()
                     }
