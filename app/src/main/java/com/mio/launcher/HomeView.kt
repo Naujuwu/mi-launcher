@@ -1,4 +1,3 @@
-
 package com.mio.launcher
 
 import android.animation.Animator
