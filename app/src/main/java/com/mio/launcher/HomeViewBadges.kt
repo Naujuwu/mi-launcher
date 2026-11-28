@@ -64,3 +64,22 @@ internal fun HomeView.drawBadgeValue(
 
     badgeText.textSize = oldTextSize
 }
+
+// Insignia con la suma de varias apps (grupos o carpetas pequeñas)
+internal fun HomeView.drawBadgeSum(
+    c: Canvas,
+    pkgs: List<String>,
+    iconLeft: Float,
+    iconTop: Float,
+    size: Float
+) {
+    if (NotifService.dnd) return
+
+    val total = pkgs.sumOf { pkg ->
+        (NotifService.counts[pkg] ?: 0).coerceAtLeast(0)
+    }
+
+    if (total > 0) {
+        drawBadgeValue(c, total, iconLeft, iconTop, size)
+    }
+}
