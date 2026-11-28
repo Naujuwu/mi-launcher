@@ -64,9 +64,10 @@ class HomeView(private val act: Activity) : View(act) {
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
-        textSize = dp(11.5f)
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        setShadowLayer(dp(3f), 0f, dp(1f), 0xAA000000.toInt())
+        textSize = iconSize * 0.19f
+        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        letterSpacing = 0.01f
+        setShadowLayer(dp(2f), 0f, dp(0.5f), 0x73000000)
     }
 
     private val glassPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -150,7 +151,8 @@ class HomeView(private val act: Activity) : View(act) {
         textSize = dp(11.5f)
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-        setShadowLayer(dp(3f), 0f, dp(1f), 0x55000000)
+        letterSpacing = 0.01f
+        setShadowLayer(dp(2f), 0f, dp(0.5f), 0x73000000)
     }
 
     private val folderPanelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -596,9 +598,9 @@ class HomeView(private val act: Activity) : View(act) {
                 val name = folder?.name ?: "Carpeta"
 
                 c.drawText(
-                    fit(name, size),
+                    fit(name, cellW - dp(6f)),
                     left + size / 2f,
-                    top + size + dp(15f),
+                    top + size + dp(17f),
                     labelPaint
                 )
             }
@@ -621,7 +623,7 @@ class HomeView(private val act: Activity) : View(act) {
         if (showLabel) {
             val shown = app.shown ?: fit(
                 app.label,
-                size
+                cellW - dp(6f)
             ).also {
                 app.shown = it
             }
@@ -629,7 +631,7 @@ class HomeView(private val act: Activity) : View(act) {
             c.drawText(
                 shown,
                 left + size / 2f,
-                top + size + dp(15f),
+                top + size + dp(17f),
                 labelPaint
             )
         }
@@ -898,7 +900,7 @@ class HomeView(private val act: Activity) : View(act) {
                 c.drawText(
                     fitFolderLabel(
                         app.label,
-                        cellW - dp(2f)
+                        cellW - dp(6f)
                     ),
                     cx,
                     top + icon + folderPanel.width() * 0.052f,
