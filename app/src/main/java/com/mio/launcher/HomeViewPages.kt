@@ -6,18 +6,42 @@ import android.graphics.RectF
 import com.mio.launcher.ui.IconRenderer
 
 internal fun HomeView.drawHome(canvas: Canvas) {
+    val libIndex = store.pages.size
+
     for (p in (currentPage - 1)..(currentPage + 1)) {
-        if (p < 0 || p >= store.pages.size) continue
+        if (p < 0 || p > libIndex) continue
 
         val offX = (p - currentPage) * width + pageOffset
 
         if (offX <= -width || offX >= width) continue
 
-        drawPage(canvas, p, offX)
+        if (p == libIndex) {
+            drawLibrary(canvas, offX)
+        } else {
+            drawPage(canvas, p, offX)
+        }
     }
 
     drawPill(canvas)
-    drawDock(canvas)
+
+    // El dock se desvanece al entrar en la biblioteca
+    val dockAlpha = 1f - libProgress()
+
+    if (dockAlpha > 0.99f) {
+        drawDock(canvas)
+    } else if (dockAlpha > 0.01f) {
+        val sc = canvas.saveLayerAlpha(
+            0f,
+            0f,
+            width.toFloat(),
+            height.toFloat(),
+            (255 * dockAlpha).toInt()
+        )
+
+        drawDock(canvas)
+        canvas.restoreToCount(sc)
+    }
+
     drawFolderTarget(canvas)
     drawDragged(canvas)
 }
