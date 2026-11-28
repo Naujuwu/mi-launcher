@@ -1,9 +1,12 @@
 package com.mio.launcher
 
+import android.graphics.Canvas
 import android.view.HapticFeedbackConstants
 
 internal fun HomeView.startDrag(pkg: String) {
     mode = MODE_DRAG
+
+    resetHover()
 
     dragPkg = pkg
 
@@ -26,6 +29,8 @@ internal fun HomeView.startDrag(pkg: String) {
 }
 
 internal fun HomeView.leaveFolderWithDrag() {
+    resetHover()
+
     val pkg = folderDragPkg ?: return
     val fid = openFolderId ?: return
 
@@ -47,7 +52,11 @@ internal fun HomeView.leaveFolderWithDrag() {
     invalidate()
 }
 
-internal fun HomeView.dropFromFolder(pkg: String, folderId: String) {
+internal fun HomeView.dropFromFolder(
+    pkg: String,
+    folderId: String,
+    ready: Boolean
+) {
     val dIdx = dockCellAt(dragX, dragY)
     val gIdx = if (dIdx >= 0) -1 else gridCellAt(dragX, dragY)
 
@@ -66,6 +75,10 @@ internal fun HomeView.dropFromFolder(pkg: String, folderId: String) {
         target == null -> {
             store.removeAppFromFolder(folderId, pkg)
             arr[idx] = pkg
+        }
+
+        !ready -> {
+            // Soltado rápido sobre otra app o carpeta: no se hace nada
         }
 
         store.isFolderSlot(target) -> {
@@ -108,8 +121,11 @@ internal fun HomeView.dropDragged() {
     val fromFolder = dragFromFolderId
     dragFromFolderId = null
 
+    val ready = folderReady && hoverKey == currentHoverKey()
+    resetHover()
+
     if (pkg != null && fromFolder != null) {
-        dropFromFolder(pkg, fromFolder)
+        dropFromFolder(pkg, fromFolder, ready)
     } else if (pkg != null) {
         val dIdx = dockCellAt(dragX, dragY)
 
@@ -145,6 +161,16 @@ internal fun HomeView.dropDragged() {
 
                 store.isFolderSlot(pkg) -> {
                     // Las carpetas se pueden mover entre espacios.
+                    place(
+                        pkg,
+                        dIdx >= 0,
+                        currentPage,
+                        if (dIdx >= 0) dIdx else gridCellAt(dragX, dragY)
+                    )
+                }
+
+                !ready -> {
+                    // Soltado rápido: intercambia lugar con lo que había
                     place(
                         pkg,
                         dIdx >= 0,
@@ -213,3 +239,84 @@ internal fun HomeView.place(
 }
 
 // Animaciones
+
+internal fun HomeView.currentHoverKey(): Int {
+    val d = dockCellAt(dragX, dragY)
+    if (d >= 0) return 1000 + d
+
+    val g = gridCellAt(dragX, dragY)
+    return if (g >= 0) currentPage * 100 + g else -1
+}
+
+internal fun HomeView.updateHover() {
+    val key = currentHoverKey()
+
+    if (key == hoverKey) return
+
+    hoverKey = key
+    folderReady = false
+
+    ui.removeCallbacks(folderDwell)
+
+    if (key >= 0) {
+        ui.postDelayed(folderDwell, 500)
+    }
+}
+
+internal fun HomeView.resetHover() {
+    ui.removeCallbacks(folderDwell)
+    hoverKey = -1
+    folderReady = false
+}
+
+internal fun HomeView.drawFolderTarget(c: Canvas) {
+    val dragging = dragPkg ?: return
+
+    if (!folderReady || hoverKey != currentHoverKey()) return
+    if (store.isFolderSlot(dragging)) return
+
+    val dIdx = dockCellAt(dragX, dragY)
+    val gIdx = if (dIdx >= 0) -1 else gridCellAt(dragX, dragY)
+    val idx = if (dIdx >= 0) dIdx else gIdx
+
+    if (idx < 0) return
+
+    val arr: Array<String?> = if (dIdx >= 0) {
+        store.dock
+    } else {
+        store.pages.getOrNull(currentPage) ?: return
+    }
+
+    val target = arr.getOrNull(idx) ?: return
+
+    if (target == dragging) return
+
+    val cx: Float
+    val top: Float
+
+    if (dIdx >= 0) {
+        cx = dockLeft + (idx + 0.5f) * dockPitch
+        top = dockRect.centerY() - iconSize / 2f
+    } else {
+        cx = gridLeft + ((idx % cols) + 0.5f) * cellW
+        top = gridTop +
+            (idx / cols) * cellH +
+            (cellH - iconSize - dp(18f)) / 2f
+    }
+
+    val pad = dp(6f)
+
+    targetRect.set(
+        cx - iconSize / 2f - pad,
+        top - pad,
+        cx + iconSize / 2f + pad,
+        top + iconSize + pad
+    )
+
+    c.drawRoundRect(
+        targetRect,
+        iconSize * 0.3f,
+        iconSize * 0.3f,
+        targetPaint
+    )
+}
