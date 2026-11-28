@@ -79,14 +79,14 @@ class HomeView(internal val act: Activity) : View(act) {
 
     internal val searchText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
-        textSize = dp(12.5f)
+        textSize = dp(12f)
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
     }
 
     internal val magPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.STROKE
-        strokeWidth = dp(1.5f)
+        strokeWidth = dp(1.6f)
         strokeCap = Paint.Cap.ROUND
     }
 
