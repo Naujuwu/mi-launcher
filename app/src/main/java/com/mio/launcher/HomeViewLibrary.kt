@@ -5,9 +5,11 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.view.MotionEvent
 import android.view.VelocityTracker
@@ -101,12 +103,25 @@ internal class LibraryState(density: Float) {
     val catCache = HashMap<String, String>()
     val tmp = Rect()
 
-    val dim = Paint().apply {
-        color = 0x38000000
+    // Degradado oscuro bajo la barra de estado
+    val scrim = Paint()
+    var scrimH = -1f
+
+    // Capa oscura suave bajo el cristal de las tarjetas (da legibilidad)
+    val cardTint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x24000000
     }
 
     val card = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x33FFFFFF
+        color = 0x30FFFFFF
+    }
+
+    val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textAlign = Paint.Align.CENTER
+        textSize = 14.5f * density
+        typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+        setShadowLayer(2f * density, 0f, 0.5f * density, 0x73000000)
     }
 
     val cardBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -347,6 +362,18 @@ internal fun HomeView.libTap(x: Float, y: Float) {
 
 // ───────────── Dibujo ─────────────
 
+private fun HomeView.libFit(text: String, maxW: Float): String {
+    if (lib.label.measureText(text) <= maxW) return text
+
+    var s = text
+
+    while (s.isNotEmpty() && lib.label.measureText(s + "…") > maxW) {
+        s = s.dropLast(1)
+    }
+
+    return s + "…"
+}
+
 // Línea base para que el texto quede centrado en vertical sobre centerY
 private fun HomeView.libBaseline(p: Paint, centerY: Float): Float {
     p.getTextBounds("B", 0, 1, lib.tmp)
@@ -357,15 +384,14 @@ private fun HomeView.libBaseline(p: Paint, centerY: Float): Float {
 internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
     val w = width.toFloat()
 
-    c.drawRect(offX, 0f, offX + w, height.toFloat(), lib.dim)
-
     lib.hits.clear()
 
     val areaTop = topInset + dp(8f)
     val areaBottom = height.toFloat()
 
+    // El contenido sube por detrás de la barra de estado
     c.save()
-    c.clipRect(offX, topInset, offX + w, areaBottom)
+    c.clipRect(offX, 0f, offX + w, areaBottom)
     c.translate(offX, -lib.scroll)
 
     val bottom = if (lib.open == null) {
@@ -384,6 +410,28 @@ internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
     if (lib.scroll > lib.maxScroll) {
         lib.scroll = lib.maxScroll
     }
+
+    // Oscuro transparente y difuminado sobre la barra de estado
+    val scrimH = topInset + dp(34f)
+
+    if (lib.scrimH != scrimH) {
+        lib.scrim.shader = LinearGradient(
+            0f,
+            0f,
+            0f,
+            scrimH,
+            0xA6000000.toInt(),
+            0x00000000,
+            Shader.TileMode.CLAMP
+        )
+
+        lib.scrimH = scrimH
+    }
+
+    c.save()
+    c.translate(offX, 0f)
+    c.drawRect(0f, 0f, w, scrimH, lib.scrim)
+    c.restore()
 }
 
 private fun HomeView.drawLibraryOverview(
@@ -391,14 +439,15 @@ private fun HomeView.drawLibraryOverview(
     areaTop: Float
 ): Float {
     val w = width.toFloat()
-    val side = dp(20f)
-    val gap = dp(14f)
+    val side = dp(32f)
+    val gap = dp(16f)
     val cardW = (w - side * 2f - gap) / 2f
-    val rowH = cardW + dp(34f)
+    val rowH = cardW + dp(48f)
 
     // Buscador
     val field = RectF(side, areaTop, w - side, areaTop + dp(54f))
 
+    c.drawRoundRect(field, dp(27f), dp(27f), lib.cardTint)
     c.drawRoundRect(field, dp(27f), dp(27f), lib.card)
     c.drawRoundRect(field, dp(27f), dp(27f), lib.cardBorder)
 
@@ -445,6 +494,7 @@ private fun HomeView.drawLibraryOverview(
 
         val card = RectF(left, top, left + cardW, top + cardW)
 
+        c.drawRoundRect(card, dp(24f), dp(24f), lib.cardTint)
         c.drawRoundRect(card, dp(24f), dp(24f), lib.card)
         c.drawRoundRect(card, dp(24f), dp(24f), lib.cardBorder)
 
@@ -470,10 +520,10 @@ private fun HomeView.drawLibraryOverview(
         }
 
         c.drawText(
-            fit(g.name, cardW - dp(8f)),
+            libFit(g.name, cardW),
             card.centerX(),
-            card.bottom + dp(18f),
-            labelPaint
+            card.bottom + dp(22f),
+            lib.label
         )
     }
 
