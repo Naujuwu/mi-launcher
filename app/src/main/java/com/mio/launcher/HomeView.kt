@@ -205,12 +205,6 @@ class HomeView(private val act: Activity) : View(act) {
 
         if (mode != MODE_FOLDER || folderPageOffset != 0f) return@Runnable
 
-        if (folderTitleArea().contains(folderDownX, folderDownY)) {
-            performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            startRename(id)
-            return@Runnable
-        }
-
         val idx = folderCellAt(folderDownX, folderDownY)
         val pkg = folder.apps.getOrNull(idx) ?: return@Runnable
 
@@ -1846,6 +1840,7 @@ class HomeView(private val act: Activity) : View(act) {
                 }
 
                 if (folderTitleArea().contains(e.x, e.y)) {
+                    startRename(id)
                     return true
                 }
 
