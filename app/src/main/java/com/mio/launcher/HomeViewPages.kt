@@ -5,6 +5,32 @@ import android.graphics.Path
 import android.graphics.RectF
 import com.mio.launcher.ui.IconRenderer
 
+// Dibuja con transparencia (para desvanecer elementos al entrar a la biblioteca)
+private inline fun HomeView.faded(
+    c: Canvas,
+    alpha: Float,
+    draw: () -> Unit
+) {
+    if (alpha > 0.99f) {
+        draw()
+        return
+    }
+
+    if (alpha <= 0.01f) return
+
+    val sc = c.saveLayerAlpha(
+        0f,
+        0f,
+        width.toFloat(),
+        height.toFloat(),
+        (255 * alpha).toInt()
+    )
+
+    draw()
+
+    c.restoreToCount(sc)
+}
+
 internal fun HomeView.drawHome(canvas: Canvas) {
     val libIndex = store.pages.size
 
@@ -22,25 +48,11 @@ internal fun HomeView.drawHome(canvas: Canvas) {
         }
     }
 
-    drawPill(canvas)
+    // La pill y el dock se desvanecen al entrar en la biblioteca
+    val keep = 1f - libProgress()
 
-    // El dock se desvanece al entrar en la biblioteca
-    val dockAlpha = 1f - libProgress()
-
-    if (dockAlpha > 0.99f) {
-        drawDock(canvas)
-    } else if (dockAlpha > 0.01f) {
-        val sc = canvas.saveLayerAlpha(
-            0f,
-            0f,
-            width.toFloat(),
-            height.toFloat(),
-            (255 * dockAlpha).toInt()
-        )
-
-        drawDock(canvas)
-        canvas.restoreToCount(sc)
-    }
+    faded(canvas, keep) { drawPill(canvas) }
+    faded(canvas, keep) { drawDock(canvas) }
 
     drawFolderTarget(canvas)
     drawDragged(canvas)
