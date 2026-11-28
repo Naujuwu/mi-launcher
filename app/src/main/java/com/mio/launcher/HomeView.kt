@@ -641,13 +641,15 @@ class HomeView(private val act: Activity) : View(act) {
     private var sqBase: Path? = null
     private var sqBaseSize = -1f
     private var sqBaseN = -1.0
+    private val sqMatrix = android.graphics.Matrix()
 
     // Squircle: n=5 para iconos, n=9 (esquinas más cerradas) para el panel
     private fun squirclePath(
         left: Float,
         top: Float,
         size: Float,
-        n: Double = 5.0
+        n: Double = 5.0,
+        stretchY: Float = 1f
     ): Path {
         if (sqBase == null || sqBaseSize != size || sqBaseN != n) {
             sqBase = IconRenderer.buildSquircle(size, n)
@@ -655,8 +657,11 @@ class HomeView(private val act: Activity) : View(act) {
             sqBaseN = n
         }
 
+        sqMatrix.setScale(1f, stretchY)
+        sqMatrix.postTranslate(left, top)
+
         sqTmp.reset()
-        sqTmp.addPath(sqBase!!, left, top)
+        sqTmp.addPath(sqBase!!, sqMatrix)
 
         return sqTmp
     }
@@ -736,19 +741,19 @@ class HomeView(private val act: Activity) : View(act) {
     // El panel siempre es de 3x3, como en iOS 26
     private fun folderRows(): Int = 3
 
-    private fun folderIconSize(): Float = folderPanel.width() * 0.20f
+    private fun folderIconSize(): Float = folderPanel.width() * 0.195f
 
-    private fun folderCellH(): Float = folderPanel.width() * 0.28f
+    private fun folderCellH(): Float = folderPanel.width() * 0.3215f
 
     private fun folderGridTop(): Float =
-        folderPanel.top + folderPanel.width() * 0.088f
+        folderPanel.top + folderPanel.width() * 0.085f
 
     private fun folderGridBottom(): Float =
         folderGridTop() + folderRows() * folderCellH()
 
     private fun folderPanelGeometry() {
-        val panelW = min(width * 0.76f, dp(400f))
-        val panelH = panelW
+        val panelW = min(width * 0.84f, dp(440f))
+        val panelH = panelW * 1.07f
 
         val left = (width - panelW) / 2f
         val top = height * 0.54f - panelH / 2f
@@ -778,7 +783,7 @@ class HomeView(private val act: Activity) : View(act) {
         )
 
         folderTitlePaint.textSize = width * 0.083f
-        folderLabelPaint.textSize = folderPanel.width() * 0.040f
+        folderLabelPaint.textSize = folderPanel.width() * 0.037f
 
         folderPanelPaint.shader = LinearGradient(
             folderPanel.left,
@@ -799,7 +804,8 @@ class HomeView(private val act: Activity) : View(act) {
                 folderPanel.left,
                 folderPanel.top,
                 folderPanel.width(),
-                9.0
+                9.0,
+                1.07f
             ),
             folderPanelPaint
         )
@@ -811,7 +817,8 @@ class HomeView(private val act: Activity) : View(act) {
                 folderPanel.left,
                 folderPanel.top,
                 folderPanel.width(),
-                9.0
+                9.0,
+                1.07f
             ),
             folderPanelBorderPaint
         )
@@ -827,7 +834,7 @@ class HomeView(private val act: Activity) : View(act) {
 
         val gridTop = folderGridTop()
 
-        val cellW = folderPanel.width() * 0.31f
+        val cellW = folderPanel.width() * 0.3175f
         val cellH = folderCellH()
 
         val icon = folderIconSize()
@@ -838,7 +845,8 @@ class HomeView(private val act: Activity) : View(act) {
                 folderPanel.left,
                 folderPanel.top,
                 folderPanel.width(),
-                9.0
+                9.0,
+                1.07f
             )
         )
 
@@ -867,7 +875,7 @@ class HomeView(private val act: Activity) : View(act) {
                 val row = i / 3
 
                 val cx = folderPanel.left +
-                    folderPanel.width() * 0.19f +
+                    folderPanel.width() * 0.1825f +
                     col * cellW
 
                 val left = cx - icon / 2f
@@ -893,7 +901,7 @@ class HomeView(private val act: Activity) : View(act) {
                         cellW - dp(2f)
                     ),
                     cx,
-                    top + icon + folderPanel.width() * 0.055f,
+                    top + icon + folderPanel.width() * 0.052f,
                     folderLabelPaint
                 )
             }
@@ -987,11 +995,11 @@ class HomeView(private val act: Activity) : View(act) {
 
         if (y < gridTop || y >= gridBottom) return -1
 
-        val pitch = folderPanel.width() * 0.31f
+        val pitch = folderPanel.width() * 0.3175f
 
         val col = Math.floor(
             ((x - folderPanel.left -
-                folderPanel.width() * 0.19f + pitch / 2f) / pitch).toDouble()
+                folderPanel.width() * 0.1825f + pitch / 2f) / pitch).toDouble()
         ).toInt()
 
         val row = ((y - gridTop) /
