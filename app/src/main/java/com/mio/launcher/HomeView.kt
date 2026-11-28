@@ -33,6 +33,7 @@ internal const val MODE_PRESS = 1
 internal const val MODE_SWIPE = 2
 internal const val MODE_DRAG = 3
 internal const val MODE_FOLDER = 4
+internal const val MODE_LIBSCROLL = 5
 
 class HomeView(internal val act: Activity) : View(act) {
     internal val cols = 4
@@ -275,6 +276,9 @@ class HomeView(internal val act: Activity) : View(act) {
 
     internal var edgeDir = 0
 
+    // Biblioteca de apps (última página, a la derecha)
+    internal val lib = LibraryState(resources.displayMetrics.density)
+
     // Carpeta al mantener el icono encima: hace falta quedarse ~0.5 s
     internal var hoverKey = -1
     internal var folderReady = false
@@ -389,7 +393,13 @@ class HomeView(internal val act: Activity) : View(act) {
         store.reconcile(apps)
         store.save()
 
+        val wasOnLibrary = currentPage >= store.pages.size
+
         currentPage = store.trimEmptyPages(currentPage)
+
+        if (wasOnLibrary) currentPage = store.pages.size
+
+        libBuild()
 
         if (openFolderId != null &&
             store.folders[openFolderId] == null
@@ -597,14 +607,17 @@ class HomeView(internal val act: Activity) : View(act) {
 
                 mode = MODE_PRESS
 
-                val d = dockCellAt(e.x, e.y)
+                val onLib = libOnPage()
+                val d = if (onLib) -1 else dockCellAt(e.x, e.y)
+
+                if (onLib) libTouchDown(e)
 
                 if (d >= 0) {
                     pressInDock = true
                     pressIndex = d
                 } else {
                     pressInDock = false
-                    pressIndex = gridCellAt(e.x, e.y)
+                    pressIndex = if (onLib) -1 else gridCellAt(e.x, e.y)
                 }
 
                 ui.postDelayed(
@@ -619,6 +632,8 @@ class HomeView(internal val act: Activity) : View(act) {
                 lastX = e.x
                 lastY = e.y
 
+                if (libOnPage()) libTrack(e)
+
                 when (mode) {
                     MODE_PRESS -> {
                         val dx = e.x - downX
@@ -632,12 +647,18 @@ class HomeView(internal val act: Activity) : View(act) {
 
                             mode = if (abs(dx) > abs(dy)) {
                                 MODE_SWIPE
+                            } else if (libOnPage()) {
+                                MODE_LIBSCROLL
                             } else {
                                 MODE_NONE
                             }
 
                             if (mode == MODE_SWIPE) {
                                 showDots()
+                            }
+
+                            if (mode == MODE_LIBSCROLL) {
+                                lib.lastY = e.y
                             }
                         }
                     }
@@ -646,6 +667,8 @@ class HomeView(internal val act: Activity) : View(act) {
                         pageOffset = clampOffset(e.x - downX)
                         invalidate()
                     }
+
+                    MODE_LIBSCROLL -> libScrollTo(e.y)
 
                     MODE_DRAG -> {
                         dragX = e.x
@@ -665,7 +688,11 @@ class HomeView(internal val act: Activity) : View(act) {
                 ui.removeCallbacks(edgeRunnable)
 
                 when (mode) {
-                    MODE_PRESS -> {
+                    MODE_LIBSCROLL -> libEndScroll()
+
+                    MODE_PRESS -> if (libOnPage()) {
+                        libTap(e.x, e.y)
+                    } else {
                         val slot = pkgAt(
                             pressInDock,
                             pressIndex,
@@ -683,7 +710,7 @@ class HomeView(internal val act: Activity) : View(act) {
 
                         if (
                             pageOffset < -threshold &&
-                            currentPage < store.pages.size - 1
+                            currentPage < store.pages.size
                         ) {
                             target++
                         } else if (
@@ -700,6 +727,8 @@ class HomeView(internal val act: Activity) : View(act) {
                         dropDragged()
                     }
                 }
+
+                libReleaseTracker()
 
                 mode = MODE_NONE
                 return true
@@ -732,7 +761,7 @@ class HomeView(internal val act: Activity) : View(act) {
 
         if (
             dx < 0 &&
-            currentPage == store.pages.size - 1
+            currentPage == store.pages.size
         ) {
             return dx * 0.3f
         }
