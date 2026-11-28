@@ -640,12 +640,19 @@ class HomeView(private val act: Activity) : View(act) {
     private val sqTmp = Path()
     private var sqBase: Path? = null
     private var sqBaseSize = -1f
+    private var sqBaseN = -1.0
 
-    // Misma forma (squircle) que los iconos de las apps
-    private fun squirclePath(left: Float, top: Float, size: Float): Path {
-        if (sqBase == null || sqBaseSize != size) {
-            sqBase = IconRenderer.buildSquircle(size, 5.0)
+    // Squircle: n=5 para iconos, n=9 (esquinas más cerradas) para el panel
+    private fun squirclePath(
+        left: Float,
+        top: Float,
+        size: Float,
+        n: Double = 5.0
+    ): Path {
+        if (sqBase == null || sqBaseSize != size || sqBaseN != n) {
+            sqBase = IconRenderer.buildSquircle(size, n)
             sqBaseSize = size
+            sqBaseN = n
         }
 
         sqTmp.reset()
@@ -791,7 +798,8 @@ class HomeView(private val act: Activity) : View(act) {
             squirclePath(
                 folderPanel.left,
                 folderPanel.top,
-                folderPanel.width()
+                folderPanel.width(),
+                9.0
             ),
             folderPanelPaint
         )
@@ -802,7 +810,8 @@ class HomeView(private val act: Activity) : View(act) {
             squirclePath(
                 folderPanel.left,
                 folderPanel.top,
-                folderPanel.width()
+                folderPanel.width(),
+                9.0
             ),
             folderPanelBorderPaint
         )
@@ -824,7 +833,14 @@ class HomeView(private val act: Activity) : View(act) {
         val icon = folderIconSize()
 
         c.save()
-        c.clipRect(folderPanel)
+        c.clipPath(
+            squirclePath(
+                folderPanel.left,
+                folderPanel.top,
+                folderPanel.width(),
+                9.0
+            )
+        )
 
         for (
             page in max(0, folderPage - 1)..
