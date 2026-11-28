@@ -738,10 +738,10 @@ class HomeView(private val act: Activity) : View(act) {
 
     private fun folderIconSize(): Float = folderPanel.width() * 0.20f
 
-    private fun folderCellH(): Float = folderPanel.width() * 0.285f
+    private fun folderCellH(): Float = folderPanel.width() * 0.28f
 
     private fun folderGridTop(): Float =
-        folderPanel.top + folderPanel.width() * 0.09f
+        folderPanel.top + folderPanel.width() * 0.088f
 
     private fun folderGridBottom(): Float =
         folderGridTop() + folderRows() * folderCellH()
@@ -827,7 +827,7 @@ class HomeView(private val act: Activity) : View(act) {
 
         val gridTop = folderGridTop()
 
-        val cellW = folderPanel.width() / 3f
+        val cellW = folderPanel.width() * 0.31f
         val cellH = folderCellH()
 
         val icon = folderIconSize()
@@ -866,7 +866,9 @@ class HomeView(private val act: Activity) : View(act) {
                 val col = i % 3
                 val row = i / 3
 
-                val cx = folderPanel.left + (col + 0.5f) * cellW
+                val cx = folderPanel.left +
+                    folderPanel.width() * 0.19f +
+                    col * cellW
 
                 val left = cx - icon / 2f
                 val top = gridTop + row * cellH
@@ -888,7 +890,7 @@ class HomeView(private val act: Activity) : View(act) {
                 c.drawText(
                     fitFolderLabel(
                         app.label,
-                        cellW - dp(8f)
+                        cellW - dp(2f)
                     ),
                     cx,
                     top + icon + folderPanel.width() * 0.055f,
@@ -985,8 +987,12 @@ class HomeView(private val act: Activity) : View(act) {
 
         if (y < gridTop || y >= gridBottom) return -1
 
-        val col = ((x - folderPanel.left) /
-            (folderPanel.width() / 3f)).toInt()
+        val pitch = folderPanel.width() * 0.31f
+
+        val col = Math.floor(
+            ((x - folderPanel.left -
+                folderPanel.width() * 0.19f + pitch / 2f) / pitch).toDouble()
+        ).toInt()
 
         val row = ((y - gridTop) /
             folderCellH()).toInt()
@@ -1786,13 +1792,7 @@ class HomeView(private val act: Activity) : View(act) {
             else -> {
                 store.removeAppFromFolder(folderId, pkg)
 
-                val folder = store.createFolder(pkg, target)
-
-                if (folder != null) {
-                    post {
-                        showRenameFolderDialog(folder.id)
-                    }
-                }
+                store.createFolder(pkg, target)
             }
         }
     }
@@ -1883,10 +1883,6 @@ class HomeView(private val act: Activity) : View(act) {
                                 currentPage,
                                 if (dIdx >= 0) dIdx else gridCellAt(dragX, dragY)
                             )
-                        } else {
-                            post {
-                                showRenameFolderDialog(folder.id)
-                            }
                         }
                     }
                 }
