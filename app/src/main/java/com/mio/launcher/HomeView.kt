@@ -834,7 +834,7 @@ class HomeView(private val act: Activity) : View(act) {
 
         val gridTop = folderGridTop()
 
-        val cellW = folderPanel.width() * 0.3175f
+        val cellW = folderPanel.width() * 0.30f
         val cellH = folderCellH()
 
         val icon = folderIconSize()
@@ -875,7 +875,7 @@ class HomeView(private val act: Activity) : View(act) {
                 val row = i / 3
 
                 val cx = folderPanel.left +
-                    folderPanel.width() * 0.1825f +
+                    folderPanel.width() * 0.20f +
                     col * cellW
 
                 val left = cx - icon / 2f
@@ -995,11 +995,11 @@ class HomeView(private val act: Activity) : View(act) {
 
         if (y < gridTop || y >= gridBottom) return -1
 
-        val pitch = folderPanel.width() * 0.3175f
+        val pitch = folderPanel.width() * 0.30f
 
         val col = Math.floor(
             ((x - folderPanel.left -
-                folderPanel.width() * 0.1825f + pitch / 2f) / pitch).toDouble()
+                folderPanel.width() * 0.20f + pitch / 2f) / pitch).toDouble()
         ).toInt()
 
         val row = ((y - gridTop) /
