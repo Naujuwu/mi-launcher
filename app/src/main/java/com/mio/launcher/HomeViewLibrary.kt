@@ -386,7 +386,8 @@ internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
 
     lib.hits.clear()
 
-    val areaTop = topInset + dp(8f)
+    // Misma altura que la primera fila de iconos de las páginas
+    val areaTop = gridTop + (cellH - iconSize - dp(18f)) / 2f
     val areaBottom = height.toFloat()
 
     // El contenido sube por detrás de la barra de estado
@@ -410,8 +411,15 @@ internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
     if (lib.scroll > lib.maxScroll) {
         lib.scroll = lib.maxScroll
     }
+}
 
-    // Oscuro transparente y difuminado sobre la barra de estado
+// Oscuro transparente y difuminado sobre la barra de estado.
+// Cubre todo el ancho y aparece según entras a la biblioteca (sin cortes).
+internal fun HomeView.drawLibraryScrim(c: Canvas) {
+    val p = libProgress()
+
+    if (p <= 0.01f) return
+
     val scrimH = topInset + dp(34f)
 
     if (lib.scrimH != scrimH) {
@@ -428,10 +436,9 @@ internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
         lib.scrimH = scrimH
     }
 
-    c.save()
-    c.translate(offX, 0f)
-    c.drawRect(0f, 0f, w, scrimH, lib.scrim)
-    c.restore()
+    lib.scrim.alpha = (255 * p).toInt()
+
+    c.drawRect(0f, 0f, width.toFloat(), scrimH, lib.scrim)
 }
 
 private fun HomeView.drawLibraryOverview(
@@ -453,9 +460,16 @@ private fun HomeView.drawLibraryOverview(
 
     val rowY = field.centerY()
     val mr = dp(7.5f)
-    val mx = field.left + dp(26f)
 
-    // La lupa (círculo + mango) queda centrada en vertical
+    // Lupa (círculo + mango) y texto, centrados como grupo
+    val label = "App Library"
+    val iconW = mr * 2.5f
+    val gapIT = dp(9f)
+    val textW = lib.hint.measureText(label)
+
+    val startX = field.centerX() - (iconW + gapIT + textW) / 2f
+
+    val mx = startX + mr
     val my = rowY - mr * 0.25f
 
     c.drawCircle(mx, my, mr, lib.glyph)
@@ -469,8 +483,8 @@ private fun HomeView.drawLibraryOverview(
     )
 
     c.drawText(
-        "Biblioteca de apps",
-        field.left + dp(54f),
+        label,
+        startX + iconW + gapIT,
         libBaseline(lib.hint, rowY),
         lib.hint
     )
@@ -517,6 +531,19 @@ private fun HomeView.drawLibraryOverview(
             c.drawBitmap(app.icon, null, r, iconPaint)
 
             lib.hits.add(LibHit(r, LIB_APP, pkg))
+        }
+
+        for (slot in 0 until 4) {
+            val l = card.left + pad + (slot % 2) * (icon + inner)
+            val t = card.top + pad + (slot / 2) * (icon + inner)
+
+            if (slot == 3 && g.pkgs.size > 4) {
+                drawBadgeSum(c, g.pkgs.drop(3), l, t, icon)
+            } else {
+                val pkg = g.pkgs.getOrNull(slot)
+
+                if (pkg != null) drawBadge(c, pkg, l, t, icon)
+            }
         }
 
         c.drawText(
