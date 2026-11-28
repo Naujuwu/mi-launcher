@@ -18,6 +18,7 @@ internal fun HomeView.drawHome(canvas: Canvas) {
 
     drawPill(canvas)
     drawDock(canvas)
+    drawFolderTarget(canvas)
     drawDragged(canvas)
 }
 
