@@ -763,7 +763,8 @@ class HomeView(internal val act: Activity) : View(act) {
             dx < 0 &&
             currentPage == store.pages.size
         ) {
-            return dx * 0.3f
+            // Nada más allá de la biblioteca
+            return 0f
         }
 
         return dx
