@@ -7,6 +7,15 @@ android {
     namespace = "com.mio.launcher"
     compileSdk = 34
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.mio.launcher"
         minSdk = 26
