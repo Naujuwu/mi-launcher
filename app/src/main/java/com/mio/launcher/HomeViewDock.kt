@@ -10,7 +10,7 @@ internal fun HomeView.drawPill(c: Canvas) {
 
     val tw = searchText.measureText(label)
 
-    val iconW = dp(12f)
+    val iconW = dp(11f)
     val gap = dp(5f)
     val padH = dp(24f)
 
@@ -62,29 +62,31 @@ internal fun HomeView.drawPill(c: Canvas) {
         searchText.alpha = sa
         magPaint.alpha = sa
 
-        val startX = cx - (iconW + gap + tw) / 2f
-        val r = dp(3.8f)
+        val r = dp(4.4f)
 
+        val startX = cx - (iconW + gap + tw) / 2f
+
+        // Lupa centrada en vertical (círculo + mango)
         val mx = startX + r
-        val my = cy - dp(0.8f)
+        val my = cy - r * 0.25f
 
         c.drawCircle(mx, my, r, magPaint)
 
         c.drawLine(
             mx + r * 0.72f,
             my + r * 0.72f,
-            startX + iconW - dp(0.5f),
-            cy + dp(4f),
+            mx + r * 1.5f,
+            my + r * 1.5f,
             magPaint
         )
 
-        val fm = searchText.fontMetrics
-        val textY = cy - (fm.ascent + fm.descent) / 2f
+        // Texto centrado por la altura de sus mayúsculas
+        searchText.getTextBounds("S", 0, 1, lib.tmp)
 
         c.drawText(
             label,
             startX + iconW + gap,
-            textY,
+            cy + lib.tmp.height() / 2f,
             searchText
         )
     }
