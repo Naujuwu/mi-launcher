@@ -4,6 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Path
 import android.graphics.RectF
 import com.mio.launcher.ui.IconRenderer
+import kotlin.math.max
 
 // Dibuja con transparencia (para desvanecer elementos al entrar a la biblioteca)
 private inline fun HomeView.faded(
@@ -48,11 +49,22 @@ internal fun HomeView.drawHome(canvas: Canvas) {
         }
     }
 
-    // La pill y el dock se desvanecen al entrar en la biblioteca
-    val keep = 1f - libProgress()
+    // La pill y el dock desaparecen rápido y quedan tapados por la biblioteca
+    val keep = (1f - libProgress() * 2.5f).coerceIn(0f, 1f)
+    val libEdge = (libIndex - currentPage) * width + pageOffset
 
-    faded(canvas, keep) { drawPill(canvas) }
-    faded(canvas, keep) { drawDock(canvas) }
+    if (keep > 0.01f) {
+        canvas.save()
+
+        if (libEdge < width) {
+            canvas.clipRect(0f, 0f, max(libEdge, 0f), height.toFloat())
+        }
+
+        faded(canvas, keep) { drawPill(canvas) }
+        faded(canvas, keep) { drawDock(canvas) }
+
+        canvas.restore()
+    }
 
     drawFolderTarget(canvas)
     drawDragged(canvas)
