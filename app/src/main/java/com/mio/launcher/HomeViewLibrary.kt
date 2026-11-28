@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.MotionEvent
@@ -98,6 +99,7 @@ internal class LibraryState(density: Float) {
 
     val hits = ArrayList<LibHit>()
     val catCache = HashMap<String, String>()
+    val tmp = Rect()
 
     val dim = Paint().apply {
         color = 0x38000000
@@ -122,7 +124,7 @@ internal class LibraryState(density: Float) {
 
     val hint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xE6FFFFFF.toInt()
-        textSize = 15f * density
+        textSize = 17f * density
         typeface = Typeface.create("sans-serif", Typeface.NORMAL)
     }
 
@@ -345,6 +347,13 @@ internal fun HomeView.libTap(x: Float, y: Float) {
 
 // ───────────── Dibujo ─────────────
 
+// Línea base para que el texto quede centrado en vertical sobre centerY
+private fun HomeView.libBaseline(p: Paint, centerY: Float): Float {
+    p.getTextBounds("B", 0, 1, lib.tmp)
+
+    return centerY + lib.tmp.height() / 2f
+}
+
 internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
     val w = width.toFloat()
 
@@ -353,7 +362,7 @@ internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
     lib.hits.clear()
 
     val areaTop = topInset + dp(8f)
-    val areaBottom = pillTop - dp(10f)
+    val areaBottom = height.toFloat()
 
     c.save()
     c.clipRect(offX, topInset, offX + w, areaBottom)
@@ -367,7 +376,10 @@ internal fun HomeView.drawLibrary(c: Canvas, offX: Float) {
 
     c.restore()
 
-    lib.maxScroll = max(0f, bottom - areaBottom + dp(12f))
+    lib.maxScroll = max(
+        0f,
+        bottom - areaBottom + bottomInset + dp(24f)
+    )
 
     if (lib.scroll > lib.maxScroll) {
         lib.scroll = lib.maxScroll
@@ -385,13 +397,17 @@ private fun HomeView.drawLibraryOverview(
     val rowH = cardW + dp(34f)
 
     // Buscador
-    val field = RectF(side, areaTop, w - side, areaTop + dp(46f))
+    val field = RectF(side, areaTop, w - side, areaTop + dp(54f))
 
-    c.drawRoundRect(field, dp(23f), dp(23f), lib.card)
+    c.drawRoundRect(field, dp(27f), dp(27f), lib.card)
+    c.drawRoundRect(field, dp(27f), dp(27f), lib.cardBorder)
 
-    val mx = field.left + dp(24f)
-    val my = field.centerY() - dp(1f)
-    val mr = dp(6f)
+    val rowY = field.centerY()
+    val mr = dp(7.5f)
+    val mx = field.left + dp(26f)
+
+    // La lupa (círculo + mango) queda centrada en vertical
+    val my = rowY - mr * 0.25f
 
     c.drawCircle(mx, my, mr, lib.glyph)
 
@@ -403,18 +419,16 @@ private fun HomeView.drawLibraryOverview(
         lib.glyph
     )
 
-    val fm = lib.hint.fontMetrics
-
     c.drawText(
         "Biblioteca de apps",
-        field.left + dp(46f),
-        field.centerY() - (fm.ascent + fm.descent) / 2f,
+        field.left + dp(54f),
+        libBaseline(lib.hint, rowY),
         lib.hint
     )
 
     lib.hits.add(LibHit(RectF(field), LIB_SEARCH, null))
 
-    val y = field.bottom + dp(20f)
+    val y = field.bottom + dp(30f)
 
     // Tarjetas de categorías
     val groups = lib.groups
@@ -529,24 +543,29 @@ private fun HomeView.drawLibraryGroup(
     }
 
     // Botón atrás
-    val cy = areaTop + dp(22f)
+    val cy = areaTop + dp(27f)
     val cx = side + dp(6f)
 
     c.drawLine(cx + dp(6f), cy - dp(9f), cx, cy, lib.glyph)
     c.drawLine(cx, cy, cx + dp(6f), cy + dp(9f), lib.glyph)
 
-    c.drawText(title, side + dp(26f), areaTop + dp(30f), lib.title)
+    c.drawText(
+        title,
+        side + dp(26f),
+        libBaseline(lib.title, cy),
+        lib.title
+    )
 
     lib.hits.add(
         LibHit(
-            RectF(0f, areaTop - dp(4f), w * 0.7f, areaTop + dp(48f)),
+            RectF(0f, areaTop - dp(4f), w * 0.7f, areaTop + dp(54f)),
             LIB_BACK,
             null
         )
     )
 
     // Cuadrícula de apps
-    val startY = areaTop + dp(60f)
+    val startY = areaTop + dp(70f)
 
     for (i in pkgs.indices) {
         val col = i % cols
