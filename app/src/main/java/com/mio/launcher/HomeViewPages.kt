@@ -4,33 +4,7 @@ import android.graphics.Canvas
 import android.graphics.Path
 import android.graphics.RectF
 import com.mio.launcher.ui.IconRenderer
-import kotlin.math.max
-
-// Dibuja con transparencia (para desvanecer elementos al entrar a la biblioteca)
-private inline fun HomeView.faded(
-    c: Canvas,
-    alpha: Float,
-    draw: () -> Unit
-) {
-    if (alpha > 0.99f) {
-        draw()
-        return
-    }
-
-    if (alpha <= 0.01f) return
-
-    val sc = c.saveLayerAlpha(
-        0f,
-        0f,
-        width.toFloat(),
-        height.toFloat(),
-        (255 * alpha).toInt()
-    )
-
-    draw()
-
-    c.restoreToCount(sc)
-}
+import kotlin.math.min
 
 internal fun HomeView.drawHome(canvas: Canvas) {
     val libIndex = store.pages.size
@@ -49,19 +23,21 @@ internal fun HomeView.drawHome(canvas: Canvas) {
         }
     }
 
-    // La pill y el dock desaparecen rápido y quedan tapados por la biblioteca
-    val keep = (1f - libProgress() * 2.5f).coerceIn(0f, 1f)
-    val libEdge = (libIndex - currentPage) * width + pageOffset
+    // Degradado sobre la barra de estado al entrar en la biblioteca
+    drawLibraryScrim(canvas)
 
-    if (keep > 0.01f) {
+    // El dock y la pill se mueven junto con la última página y salen con ella
+    val shift = min(
+        0f,
+        ((libIndex - 1) - currentPage) * width + pageOffset
+    )
+
+    if (shift > -width) {
         canvas.save()
+        canvas.translate(shift, 0f)
 
-        if (libEdge < width) {
-            canvas.clipRect(0f, 0f, max(libEdge, 0f), height.toFloat())
-        }
-
-        faded(canvas, keep) { drawPill(canvas) }
-        faded(canvas, keep) { drawDock(canvas) }
+        drawPill(canvas)
+        drawDock(canvas)
 
         canvas.restore()
     }
